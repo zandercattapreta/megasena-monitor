@@ -23,7 +23,7 @@ O aplicativo foi concebido com uma filosofia de "tela única" (single-view), ond
 
 - ✅ **Gestão de Apostas**: Cadastro intuitivo de 6 a 15 números via grid visual.
 - ✅ **Suporte a Teimosinha**: Gerencia de 1 a 12 concursos consecutivos para cada aposta.
-- ✅ **Verificação Automática**: Busca resultados históricos e atuais via API oficial com fallback para web scraping.
+- ✅ **Verificação Automática**: Busca resultados históricos e atuais via API oficial com fallback para API alternativa.
 - ✅ **Offline-First**: Banco de dados SQLite local garante que seus dados nunca saiam do seu computador.
 - ✅ **Cálculo de Acertos**: Identificação visual imediata de números sorteados com efeito "glow" (brilho) nas esferas.
 - ✅ **Design Minimalista**: Interface limpa, tipografia nativa e paleta de cores harmoniosa (#00A859).
@@ -38,7 +38,7 @@ O MegaSena Monitor utiliza o que há de mais moderno no desenvolvimento de aplic
 - **Backend (Core)**: [Tauri 2.0](https://tauri.app/) (Rust) para segurança e performance.
 - **Banco de Dados**: [SQLite](https://www.sqlite.org/) via `rusqlite` no Rust.
 - **Build System**: [Vite 7.0](https://vitejs.dev/).
-- **API Client**: `reqwest` (Rust) para comunicações seguras e assíncronas.
+- **API Client**: `reqwest` (Rust) para comunicações HTTP.
 
 ---
 

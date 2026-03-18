@@ -65,9 +65,17 @@ function App() {
 
       toast.loading(`Conferindo ${concursosUnicos.length} concurso(s)...`, { id: 'verificando' });
 
-      const results = await Promise.allSettled(
-        concursosUnicos.map(concurso => tauri.verificarResultados(concurso))
-      );
+      // Limitar concorrência para reduzir timeouts/bloqueios em fontes externas
+      const maxConcurrent = 4;
+      const results: PromiseSettledResult<Resultado>[] = [];
+
+      for (let i = 0; i < concursosUnicos.length; i += maxConcurrent) {
+        const chunk = concursosUnicos.slice(i, i + maxConcurrent);
+        const chunkResults = await Promise.allSettled(
+          chunk.map(concurso => tauri.verificarResultados(concurso))
+        );
+        results.push(...chunkResults);
+      }
 
       let verificadas = results.filter(r => r.status === 'fulfilled').length;
       let erros = results.length - verificadas;

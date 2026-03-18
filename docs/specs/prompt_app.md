@@ -10,7 +10,7 @@ Criar um aplicativo desktop **ultra-minimalista** para gerenciar apostas da Mega
 
 ### Stack
 
-- **Frontend**: React 18 + TypeScript + Tailwind CSS
+- **Frontend**: React + TypeScript + Tailwind CSS
 - **Backend**: Tauri (Rust)
 - **Database**: SQLite (integrado no Tauri)
 - **Build Target**: macOS (inicial), Windows/Linux (futuro)
@@ -400,6 +400,8 @@ Query: "mega-sena concurso {numero} resultado"
 Parse snippets
 ```
 
+> Nota: no código atual do repositório, o fallback implementado é via **API alternativa compatível com o formato da Caixa** (não via scraping/Google).
+
 ### Implementação (Rust - Tauri)
 
 ```rust
@@ -616,8 +618,8 @@ body {
    - DMG installer (macOS)
 
 5. **Licença**
-   - GNU GPL v3.0
-   - Headers em todos os arquivos
+   - MIT (ver `LICENSE`)
+   - Manter headers consistentes com a licença do repositório
 
 ---
 
@@ -651,6 +653,6 @@ npm run tauri build
 > - Expansão de apostas mostra todos os resultados
 > - Verificação manual via API com fallback
 > - SQLite para persistência
-> - Licença GNU GPL v3.0
+> - Licença MIT
 >
 > Implemente TODOS os componentes descritos, com testes completos e documentação.

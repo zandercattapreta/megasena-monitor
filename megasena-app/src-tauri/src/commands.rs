@@ -80,14 +80,31 @@ pub fn verificar_resultados(
     concurso: i32,
 ) -> Result<Resultado, String> {
     println!("Comando verificar_resultados: concurso={}", concurso);
-    // Buscar resultado da API
+
+    // 1) Tentar cache local primeiro (offline-first)
+    {
+        let db_lock = db.lock().map_err(|e| e.to_string())?;
+        if let Ok(Some(cached)) = db_lock.obter_resultado(concurso) {
+            // Garantir que acertos estejam atualizados para apostas recentes
+            db_lock
+                .processar_acertos_concurso(concurso, &cached.numeros_sorteados)
+                .map_err(|e| e.to_string())?;
+            return Ok(cached);
+        }
+    }
+
+    // 2) Se não houver cache, buscar na API
     let resultado = api::verificar_resultado(concurso)?;
-    
-    // Salvar no banco de dados e processar acertos
-    let db = db.lock().map_err(|e| e.to_string())?;
-    db.salvar_resultado(&resultado).map_err(|e| e.to_string())?;
-    db.processar_acertos_concurso(concurso, &resultado.numeros_sorteados).map_err(|e| e.to_string())?;
-    
+
+    // 3) Persistir e processar acertos
+    let db_lock = db.lock().map_err(|e| e.to_string())?;
+    db_lock
+        .salvar_resultado(&resultado)
+        .map_err(|e| e.to_string())?;
+    db_lock
+        .processar_acertos_concurso(concurso, &resultado.numeros_sorteados)
+        .map_err(|e| e.to_string())?;
+
     Ok(resultado)
 }
 
@@ -103,19 +120,26 @@ pub fn carregar_ultimos_resultados(
     println!("Comando carregar_ultimos_resultados: {} concursos a partir de {}", quantidade, concurso_final);
     
     for concurso in (concurso_inicial..=concurso_final).rev() {
+        // 1) Cache local
+        if let Ok(Some(cached)) = db
+            .lock()
+            .map_err(|e| e.to_string())?
+            .obter_resultado(concurso)
+        {
+            resultados.push(cached);
+            continue;
+        }
+
+        // 2) API
         match api::verificar_resultado(concurso) {
             Ok(resultado) => {
-                // Salvar no banco e processar
                 let db_lock = db.lock().map_err(|e| e.to_string())?;
                 let _ = db_lock.salvar_resultado(&resultado);
                 let _ = db_lock.processar_acertos_concurso(concurso, &resultado.numeros_sorteados);
-                drop(db_lock);
-                
                 resultados.push(resultado);
             }
             Err(e) => {
                 eprintln!("Aviso: Concurso {} ainda não disponível: {}", concurso, e);
-                // Continuar para coletar o restante do histórico de 12
             }
         }
     }

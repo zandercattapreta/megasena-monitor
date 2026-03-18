@@ -315,6 +315,7 @@ mod tests {
             acumulado: false,
             valor_premio: Some(500000.0),
             ganhadores: Some(1),
+            valor_total: Some(500000.0),
         };
         db.salvar_resultado(&res_2650).unwrap();
         db.processar_acertos_concurso(2650, &sorteio_2650).unwrap();
