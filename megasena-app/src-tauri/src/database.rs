@@ -18,10 +18,10 @@
 
 // Database operations for MegaSena App
 
+use crate::models::Aposta;
 use rusqlite::{params, Connection, Result};
 use serde_json;
 use std::path::PathBuf;
-use crate::models::Aposta;
 
 pub struct Database {
     conn: Connection,
@@ -69,9 +69,15 @@ impl Database {
         )?;
 
         // Migrações manuais para colunas novas se a tabela já existir (ignora erro se já existirem)
-        let _ = self.conn.execute("ALTER TABLE resultados ADD COLUMN valor_premio REAL", []);
-        let _ = self.conn.execute("ALTER TABLE resultados ADD COLUMN ganhadores INTEGER", []);
-        let _ = self.conn.execute("ALTER TABLE resultados ADD COLUMN valor_total REAL", []);
+        let _ = self
+            .conn
+            .execute("ALTER TABLE resultados ADD COLUMN valor_premio REAL", []);
+        let _ = self
+            .conn
+            .execute("ALTER TABLE resultados ADD COLUMN ganhadores INTEGER", []);
+        let _ = self
+            .conn
+            .execute("ALTER TABLE resultados ADD COLUMN valor_total REAL", []);
 
         Ok(())
     }
@@ -83,7 +89,7 @@ impl Database {
         quantidade_concursos: i32,
     ) -> Result<Aposta> {
         let numeros_json = serde_json::to_string(&numeros).unwrap();
-        
+
         self.conn.execute(
             "INSERT INTO apostas (numeros, concurso_inicial, quantidade_concursos) VALUES (?1, ?2, ?3)",
             params![numeros_json, concurso_inicial, quantidade_concursos],
@@ -92,20 +98,24 @@ impl Database {
         let id = self.conn.last_insert_rowid();
 
         let mut stmt = self.conn.prepare(
-            "SELECT id, numeros, concurso_inicial, quantidade_concursos, 
-             datetime(data_criacao) as data_criacao, ativa 
-             FROM apostas WHERE id = ?1"
+            "SELECT id, numeros, concurso_inicial, quantidade_concursos,
+             datetime(data_criacao) as data_criacao, ativa
+             FROM apostas WHERE id = ?1",
         )?;
 
         let aposta = stmt.query_row(params![id], |row| {
             let id: i64 = row.get(0)?;
             let numeros_str: String = row.get(1)?;
-            let numeros: Vec<i32> = serde_json::from_str(&numeros_str)
-                .map_err(|e| rusqlite::Error::FromSqlConversionFailure(0, rusqlite::types::Type::Text, Box::new(e)))?;
+            let numeros: Vec<i32> = serde_json::from_str(&numeros_str).unwrap_or_else(|_| {
+                numeros_str
+                    .split(',')
+                    .filter_map(|s| s.trim().parse().ok())
+                    .collect()
+            });
 
             // Buscar resultados/acertos
             let acertos = self.obter_acertos_aposta(id).unwrap_or_default();
-            
+
             // Buscar os números sorteados de cada concurso verificado
             let mut resultados_concursos = std::collections::HashMap::new();
             for (&concurso, _) in &acertos {
@@ -133,22 +143,27 @@ impl Database {
 
     pub fn listar_apostas(&self) -> Result<Vec<Aposta>> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, numeros, concurso_inicial, quantidade_concursos, 
-             datetime(data_criacao) as data_criacao, ativa 
-             FROM apostas 
-             WHERE ativa = 1 
-             ORDER BY id DESC"
+            "SELECT id, numeros, concurso_inicial, quantidade_concursos,
+             datetime(data_criacao) as data_criacao, ativa
+             FROM apostas
+             WHERE ativa = 1
+             ORDER BY id DESC",
         )?;
 
         let apostas = stmt
             .query_map([], |row| {
                 let id: i64 = row.get(0)?;
                 let numeros_str: String = row.get(1)?;
-                let numeros: Vec<i32> = serde_json::from_str(&numeros_str).map_err(|e| rusqlite::Error::FromSqlConversionFailure(0, rusqlite::types::Type::Text, Box::new(e)))?;
+                let numeros: Vec<i32> = serde_json::from_str(&numeros_str).unwrap_or_else(|_| {
+                    numeros_str
+                        .split(',')
+                        .filter_map(|s| s.trim().parse().ok())
+                        .collect()
+                });
 
                 // Buscar resultados/acertos
                 let acertos = self.obter_acertos_aposta(id).unwrap_or_default();
-                
+
                 // Buscar os números sorteados de cada concurso verificado
                 let mut resultados_concursos = std::collections::HashMap::new();
                 for (&concurso, _) in &acertos {
@@ -171,19 +186,22 @@ impl Database {
             .collect::<Result<Vec<_>>>()?;
 
         Ok(apostas)
-    }    pub fn excluir_aposta(&self, id: i64) -> Result<()> {
+    }
+    pub fn excluir_aposta(&self, id: i64) -> Result<()> {
         // Limpar acertos e aposta
-        self.conn.execute("DELETE FROM apostas_resultados WHERE aposta_id = ?1", params![id])?;
-        self.conn.execute("DELETE FROM apostas WHERE id = ?1", params![id])?;
+        self.conn.execute(
+            "DELETE FROM apostas_resultados WHERE aposta_id = ?1",
+            params![id],
+        )?;
+        self.conn
+            .execute("DELETE FROM apostas WHERE id = ?1", params![id])?;
         Ok(())
     }
-
-
 
     pub fn salvar_resultado(&self, resultado: &crate::models::Resultado) -> Result<()> {
         let numeros_json = serde_json::to_string(&resultado.numeros_sorteados)
             .map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(e)))?;
-        
+
         println!("Salvando resultado concurso: {}", resultado.concurso);
         self.conn.execute(
             "INSERT OR REPLACE INTO resultados (concurso, numeros_sorteados, data_sorteio, acumulado, valor_premio, ganhadores, valor_total)
@@ -210,8 +228,13 @@ impl Database {
 
         let resultado = stmt.query_row(params![concurso], |row| {
             let numeros_str: String = row.get(1)?;
-            let numeros_sorteados: Vec<i32> = serde_json::from_str(&numeros_str)
-                .map_err(|e| rusqlite::Error::FromSqlConversionFailure(0, rusqlite::types::Type::Text, Box::new(e)))?;
+            let numeros_sorteados: Vec<i32> =
+                serde_json::from_str(&numeros_str).unwrap_or_else(|_| {
+                    numeros_str
+                        .split(',')
+                        .filter_map(|s| s.trim().parse().ok())
+                        .collect()
+                });
 
             Ok(crate::models::Resultado {
                 concurso: row.get(0)?,
@@ -231,30 +254,44 @@ impl Database {
         }
     }
 
-    pub fn processar_acertos_concurso(&self, concurso: i32, numeros_sorteados: &[i32]) -> Result<()> {
+    pub fn processar_acertos_concurso(
+        &self,
+        concurso: i32,
+        numeros_sorteados: &[i32],
+    ) -> Result<()> {
         // Buscar todas as apostas ativas que incluem este concurso
         let mut stmt = self.conn.prepare(
-            "SELECT id, numeros, concurso_inicial, quantidade_concursos 
-             FROM apostas 
-             WHERE ativa = 1 
-             AND ?1 >= concurso_inicial 
-             AND ?1 < (concurso_inicial + quantidade_concursos)"
+            "SELECT id, numeros, concurso_inicial, quantidade_concursos
+             FROM apostas
+             WHERE ativa = 1
+             AND ?1 >= concurso_inicial
+             AND ?1 < (concurso_inicial + quantidade_concursos)",
         )?;
 
-        let apostas_afetadas = stmt.query_map(params![concurso], |row| {
-            let id: i64 = row.get(0)?;
-            let numeros_str: String = row.get(1)?;
-            let numeros: Vec<i32> = serde_json::from_str(&numeros_str).unwrap();
-            Ok((id, numeros))
-        })?.collect::<Result<Vec<(i64, Vec<i32>)>>>()?;
+        let apostas_afetadas = stmt
+            .query_map(params![concurso], |row| {
+                let id: i64 = row.get(0)?;
+                let numeros_str: String = row.get(1)?;
+                let numeros: Vec<i32> = serde_json::from_str(&numeros_str).unwrap_or_else(|_| {
+                    numeros_str
+                        .split(',')
+                        .filter_map(|s| s.trim().parse().ok())
+                        .collect()
+                });
+                Ok((id, numeros))
+            })?
+            .collect::<Result<Vec<(i64, Vec<i32>)>>>()?;
 
         for (id, numeros) in apostas_afetadas {
             // Calcular acertos
-            let acertos = numeros.iter().filter(|n| numeros_sorteados.contains(n)).count() as i32;
-            
+            let acertos = numeros
+                .iter()
+                .filter(|n| numeros_sorteados.contains(n))
+                .count() as i32;
+
             // Inserir ou substituir na tabela de resultados de apostas
             self.conn.execute(
-                "INSERT OR REPLACE INTO apostas_resultados (aposta_id, concurso, acertos) 
+                "INSERT OR REPLACE INTO apostas_resultados (aposta_id, concurso, acertos)
                  VALUES (?1, ?2, ?3)",
                 params![id, concurso, acertos],
             )?;
@@ -263,14 +300,19 @@ impl Database {
         Ok(())
     }
 
-    pub fn obter_acertos_aposta(&self, aposta_id: i64) -> Result<std::collections::HashMap<i32, i32>> {
-        let mut stmt = self.conn.prepare(
-            "SELECT concurso, acertos FROM apostas_resultados WHERE aposta_id = ?1"
-        )?;
+    pub fn obter_acertos_aposta(
+        &self,
+        aposta_id: i64,
+    ) -> Result<std::collections::HashMap<i32, i32>> {
+        let mut stmt = self
+            .conn
+            .prepare("SELECT concurso, acertos FROM apostas_resultados WHERE aposta_id = ?1")?;
 
-        let results = stmt.query_map(params![aposta_id], |row| {
-            Ok((row.get::<_, i32>(0)?, row.get::<_, i32>(1)?))
-        })?.collect::<Result<std::collections::HashMap<i32, i32>>>()?;
+        let results = stmt
+            .query_map(params![aposta_id], |row| {
+                Ok((row.get::<_, i32>(0)?, row.get::<_, i32>(1)?))
+            })?
+            .collect::<Result<std::collections::HashMap<i32, i32>>>()?;
 
         Ok(results)
     }
@@ -291,11 +333,11 @@ mod tests {
     fn test_db_adicionar_listar_apostas() {
         let db = setup_test_db();
         let numeros = vec![1, 2, 3, 4, 5, 6];
-        
+
         let aposta = db.adicionar_aposta(numeros.clone(), 2650, 1).unwrap();
         assert_eq!(aposta.concurso_inicial, 2650);
         assert_eq!(aposta.numeros, numeros);
-        
+
         let apostas = db.listar_apostas().unwrap();
         assert_eq!(apostas.len(), 1);
         assert_eq!(apostas[0].id, aposta.id);
@@ -306,7 +348,7 @@ mod tests {
         let db = setup_test_db();
         let aposta_numeros = vec![1, 2, 3, 4, 5, 6];
         db.adicionar_aposta(aposta_numeros, 2650, 2).unwrap(); // Concursos 2650 e 2651
-        
+
         let sorteio_2650 = vec![1, 2, 10, 11, 12, 13]; // 2 acertos
         let res_2650 = crate::models::Resultado {
             concurso: 2650,
@@ -319,7 +361,7 @@ mod tests {
         };
         db.salvar_resultado(&res_2650).unwrap();
         db.processar_acertos_concurso(2650, &sorteio_2650).unwrap();
-        
+
         let acertos_map = db.obter_acertos_aposta(1).unwrap();
         assert_eq!(acertos_map.get(&2650), Some(&2));
         assert_eq!(acertos_map.get(&2651), None);
