@@ -94,7 +94,7 @@ pub fn run() {
             // Configurar Menu de Aplicativo (macOS)
             let m_about =
                 MenuItem::with_id(app, "about", "Sobre o MegaSena Monitor", true, None::<&str>)?;
-            let m_quit = PredefinedMenuItem::quit(app, Some("Fechar (QUIT)"))?;
+            let m_quit = MenuItem::with_id(app, "quit", "Fechar (QUIT)", true, Some("CmdOrCtrl+Q"))?;
 
             // Submenu principal "MegaSena Monitor" (ao lado da Maçã no macOS)
             let app_submenu = Submenu::with_items(
@@ -116,19 +116,25 @@ pub fn run() {
                         let _ = w.set_focus();
                     }
                 }
+                "quit" => {
+                    std::process::exit(0);
+                }
                 _ => {}
             });
 
             // Configurar Tray Icon
             let t_mostrar =
                 MenuItem::with_id(app, "mostrar", "Mostrar Monitor", true, None::<&str>)?;
-            let t_sair = PredefinedMenuItem::quit(app, Some("Sair"))?;
+            let t_sair = MenuItem::with_id(app, "quit", "Sair", true, None::<&str>)?;
             let tray_menu = Menu::with_items(app, &[&t_mostrar, &t_sair])?;
 
             let _tray = TrayIconBuilder::new()
                 .icon(app.default_window_icon().unwrap().clone())
                 .menu(&tray_menu)
                 .on_menu_event(|app, event| match event.id.as_ref() {
+                    "quit" => {
+                        std::process::exit(0);
+                    }
                     "mostrar" => {
                         if let Some(window) = app.get_webview_window("main") {
                             let _ = window.show();

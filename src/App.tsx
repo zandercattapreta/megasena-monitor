@@ -27,6 +27,7 @@ function App() {
   const [isBackgroundSyncing, setIsBackgroundSyncing] = useState(false);
   const [verificando, setVerificando] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showCadastroModal, setShowCadastroModal] = useState(false);
   const [settingsView, setSettingsView] = useState<
     "settings" | "about" | "help"
   >("settings");
@@ -34,7 +35,6 @@ function App() {
 
   const isSyncing = useRef(false);
   const lastSyncTime = useRef(0);
-  const cadastroRef = useRef<HTMLElement>(null);
 
   const carregarApostas = async () => {
     console.log("[App] Carregando apostas...");
@@ -181,8 +181,12 @@ function App() {
 
     const unlistenShow = listen("window-show", () => syncResultados(false));
     const unlistenView = listen("open-view", (event: { payload: string }) => {
-      setSettingsView(event.payload as any);
-      setShowSettings(true);
+      if (event.payload === "new_bet") {
+        setShowCadastroModal(true);
+      } else {
+        setSettingsView(event.payload as any);
+        setShowSettings(true);
+      }
     });
     const unlistenNovo = listen("novo-resultado", () => {
       // Recarrega a view para refletir os resultados processados em background
@@ -270,6 +274,13 @@ function App() {
             <h2 className="text-xs font-black text-muted-foreground uppercase tracking-[0.3em]">
               MINHAS APOSTAS ({apostas.length}/10)
             </h2>
+            <button
+              onClick={() => setShowCadastroModal(true)}
+              className="px-4 py-2.5 bg-green-sphere hover:bg-green-dark text-white rounded-xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all shadow-md flex items-center gap-1.5"
+              title="Cadastrar Nova Aposta (Cmd+N)"
+            >
+              <span className="text-sm leading-none">+</span> Nova Aposta
+            </button>
           </div>
 
           {loading ? (
@@ -286,17 +297,7 @@ function App() {
 
         <div className="border-t border-border my-8"></div>
 
-        {/* 2. CADASTRAR NOVA APOSTA (Segundo Item) */}
-        <section ref={cadastroRef} className="mb-10">
-          <h2 className="text-xs font-black text-muted-foreground uppercase tracking-[0.3em] mb-6">
-            Cadastrar Nova Aposta
-          </h2>
-          <FormCadastro onApostaAdicionada={carregarApostas} />
-        </section>
-
-        <div className="border-t border-border my-8"></div>
-
-        {/* 3. ÚLTIMOS RESULTADOS (Terceiro Item) */}
+        {/* 2. ÚLTIMOS RESULTADOS (Segundo Item) */}
         {ultimosResultados.length > 0 && (
           <section className="mb-10 overflow-hidden">
             <h2 className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] mb-4 ml-1 flex items-center gap-2">
@@ -334,6 +335,26 @@ function App() {
         )}
       </div>
       <Toaster position="bottom-right" />
+
+      {/* MODAL: Cadastro de Nova Aposta */}
+      {showCadastroModal && (
+        <div 
+          onClick={() => setShowCadastroModal(false)}
+          className="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-300 cursor-pointer"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-sm max-h-[85vh] overflow-y-auto scrollbar-hide transform animate-in slide-in-from-bottom-8 duration-500 rounded-3xl"
+          >
+            <FormCadastro 
+              onApostaAdicionada={() => {
+                carregarApostas();
+                setShowCadastroModal(false);
+              }} 
+            />
+          </div>
+        </div>
+      )}
 
       {lastResultado && (
         <ModalResultado

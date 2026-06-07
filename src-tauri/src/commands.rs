@@ -75,7 +75,7 @@ pub fn excluir_aposta(db: State<'_, Mutex<Database>>, id: i64) -> Result<(), Str
 
 
 #[tauri::command]
-pub fn verificar_resultados(
+pub async fn verificar_resultados(
     db: State<'_, Mutex<Database>>,
     concurso: i32,
 ) -> Result<Resultado, String> {
@@ -148,7 +148,7 @@ pub async fn carregar_ultimos_resultados(
 }
 
 #[tauri::command]
-pub fn obter_ultimo_concurso() -> Result<i32, String> {
+pub async fn obter_ultimo_concurso() -> Result<i32, String> {
     api::obter_ultimo_concurso_numero()
 }
 

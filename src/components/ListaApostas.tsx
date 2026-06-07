@@ -168,20 +168,8 @@ export function ListaApostas({ apostas, onApostaExcluida }: ListaApostasProps) {
         <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] ml-1">
           Estatísticas & Rendimento de Jogos
         </h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-card border border-border rounded-2xl p-4 flex flex-col justify-center shadow-sm">
-            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-wider">
-              Investimento
-            </span>
-            <span className="text-lg font-black text-foreground mt-1 tracking-tight">
-              {new Intl.NumberFormat("pt-BR", {
-                style: "currency",
-                currency: "BRL",
-              }).format(analytics.totalGasto)}
-            </span>
-          </div>
-
-          <div className="bg-card border border-border rounded-2xl p-4 flex flex-col justify-center shadow-sm">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="bg-card border border-border rounded-2xl p-4 flex flex-col justify-center shadow-sm h-[84px]">
             <span className="text-[10px] font-black text-muted-foreground uppercase tracking-wider">
               Premiações
             </span>
@@ -213,7 +201,7 @@ export function ListaApostas({ apostas, onApostaExcluida }: ListaApostasProps) {
             </div>
           </div>
 
-          <div className="bg-card border border-border rounded-2xl p-4 flex flex-col justify-center col-span-2 shadow-sm">
+          <div className="bg-card border border-border rounded-2xl p-4 flex flex-col justify-center shadow-sm h-[84px]">
             <span className="text-[10px] font-black text-muted-foreground uppercase tracking-wider mb-2">
               Dezenas Quentes (Top 5)
             </span>

@@ -41,4 +41,5 @@ _ BKP*
 *.app
 dist/
 dist-ssr/
+release/
 
