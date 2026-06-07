@@ -32,6 +32,7 @@ function App() {
   const [initError, setInitError] = useState<string | null>(null);
 
   const isSyncing = useRef(false);
+  const lastSyncTime = useRef(0);
 
   const carregarApostas = async () => {
     console.log("[App] Carregando apostas...");
@@ -116,8 +117,16 @@ function App() {
     }
 
     const syncResultados = async (showSplash: boolean = false) => {
+      const now = Date.now();
+      // Rate-limit de 10 segundos para evitar loops infinitos disparados por eventos nativos de foco/layout
+      if (now - lastSyncTime.current < 10000) {
+        console.log("[App] Sincronização ignorada por rate limit");
+        return;
+      }
+
       if (isSyncing.current) return;
       isSyncing.current = true;
+      lastSyncTime.current = now;
 
       console.log("[App] Sincronização Iniciada");
       try {
