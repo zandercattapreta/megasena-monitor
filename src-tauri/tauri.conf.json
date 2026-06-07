@@ -15,6 +15,9 @@
         "title": "MegaSena Monitor",
         "width": 600,
         "height": 800,
+        "minWidth": 600,
+        "maxWidth": 600,
+        "minHeight": 500,
         "resizable": true,
         "fullscreen": false
       }

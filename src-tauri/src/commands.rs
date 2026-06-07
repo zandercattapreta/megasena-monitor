@@ -109,7 +109,7 @@ pub fn verificar_resultados(
 }
 
 #[tauri::command]
-pub fn carregar_ultimos_resultados(
+pub async fn carregar_ultimos_resultados(
     db: State<'_, Mutex<Database>>,
     concurso_final: i32,
     quantidade: i32,

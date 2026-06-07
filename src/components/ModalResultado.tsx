@@ -28,8 +28,14 @@ export function ModalResultado({ resultado, apostas, onClose }: ModalResultadoPr
     : -1;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-300">
-      <div className="bg-card rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden transform animate-in slide-in-from-bottom-8 duration-500 border border-border">
+    <div 
+      onClick={onClose}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-300 cursor-pointer"
+    >
+      <div 
+        onClick={(e) => e.stopPropagation()}
+        className="bg-card rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden transform animate-in slide-in-from-bottom-8 duration-500 border border-border cursor-default"
+      >
         <div className="bg-green-sphere p-6 text-white text-center">
           <h2 className="text-sm font-black uppercase tracking-[0.3em] opacity-80 mb-1">Último Concurso</h2>
           <div className="text-4xl font-black">#{resultado.concurso}</div>

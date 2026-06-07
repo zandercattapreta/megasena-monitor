@@ -24,6 +24,7 @@ function App() {
   const [ultimosResultados, setUltimosResultados] = useState<Resultado[]>([]);
   const [lastResultado, setLastResultado] = useState<Resultado | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isBackgroundSyncing, setIsBackgroundSyncing] = useState(false);
   const [verificando, setVerificando] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [settingsView, setSettingsView] = useState<
@@ -128,6 +129,7 @@ function App() {
       if (isSyncing.current) return;
       isSyncing.current = true;
       lastSyncTime.current = now;
+      setIsBackgroundSyncing(true);
 
       console.log("[App] Sincronização Iniciada");
       try {
@@ -156,10 +158,15 @@ function App() {
       } finally {
         await carregarApostas();
         isSyncing.current = false;
+        setIsBackgroundSyncing(false);
         console.log("[App] Sincronização Finalizada");
       }
     };
 
+    // Carregar apostas locais imediatamente (inicialização instantânea < 50ms)
+    carregarApostas();
+
+    // Sincronizar concursos em background de forma assíncrona (não-bloqueante)
     syncResultados(true);
 
     // Listeners
@@ -220,11 +227,17 @@ function App() {
               />
             </div>
             <div>
-              <h1 className="text-sm font-black text-foreground uppercase tracking-widest leading-none">
+              <h1 className="text-sm font-black text-foreground uppercase tracking-widest leading-none flex items-center gap-2">
                 MegaSena
+                {isBackgroundSyncing && (
+                  <span className="w-2 h-2 rounded-full bg-green-500 animate-ping inline-block" title="Sincronizando com a Caixa..." />
+                )}
               </h1>
-              <p className="text-[10px] font-bold text-green-sphere tracking-[0.2em] uppercase opacity-70">
+              <p className="text-[10px] font-bold text-green-sphere tracking-[0.2em] uppercase opacity-70 flex items-center gap-1.5">
                 Monitor
+                {isBackgroundSyncing && (
+                  <span className="text-[8px] font-black text-green-sphere/80 lowercase tracking-normal animate-pulse bg-green-sphere/10 px-1.5 py-0.5 rounded-md">sincronizando...</span>
+                )}
               </p>
             </div>
           </div>

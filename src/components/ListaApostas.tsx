@@ -100,75 +100,7 @@ export function ListaApostas({ apostas, onApostaExcluida }: ListaApostasProps) {
 
   return (
     <div className="space-y-6">
-      {/* Dashboard de Analytics */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-card border border-border rounded-2xl p-4 flex flex-col justify-center shadow-sm">
-          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-wider">
-            Investimento
-          </span>
-          <span className="text-lg font-black text-foreground mt-1 tracking-tight">
-            {new Intl.NumberFormat("pt-BR", {
-              style: "currency",
-              currency: "BRL",
-            }).format(analytics.totalGasto)}
-          </span>
-        </div>
-
-        <div className="bg-card border border-border rounded-2xl p-4 flex flex-col justify-center shadow-sm">
-          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-wider">
-            Premiações
-          </span>
-          <div className="flex items-center gap-3 mt-1">
-            <div className="flex items-center gap-1" title="Quadras">
-              <span className="text-sm font-black text-yellow-500">
-                {analytics.quadras}
-              </span>
-              <span className="text-[10px] font-bold text-muted-foreground">
-                Qd
-              </span>
-            </div>
-            <div className="flex items-center gap-1" title="Quinas">
-              <span className="text-sm font-black text-yellow-600">
-                {analytics.quinas}
-              </span>
-              <span className="text-[10px] font-bold text-muted-foreground">
-                Qn
-              </span>
-            </div>
-            <div className="flex items-center gap-1" title="Senas">
-              <span className="text-sm font-black text-yellow-700">
-                {analytics.senas}
-              </span>
-              <span className="text-[10px] font-bold text-muted-foreground">
-                Sn
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-card border border-border rounded-2xl p-4 flex flex-col justify-center col-span-2 shadow-sm">
-          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-wider mb-2">
-            Dezenas Quentes (Top 5)
-          </span>
-          <div className="flex gap-2">
-            {analytics.numerosQuentes.map((n) => (
-              <div
-                key={n}
-                className="w-8 h-8 rounded-full bg-green-sphere/10 border border-green-sphere/30 text-green-sphere flex items-center justify-center text-xs font-black shadow-sm"
-              >
-                {n.toString().padStart(2, "0")}
-              </div>
-            ))}
-            {analytics.numerosQuentes.length === 0 && (
-              <span className="text-xs text-muted-foreground">
-                Nenhuma aposta registrada
-              </span>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Filtros */}
+      {/* Filtros (Topo) */}
       <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
         <button
           onClick={() => setFiltro("todas")}
@@ -212,7 +144,7 @@ export function ListaApostas({ apostas, onApostaExcluida }: ListaApostasProps) {
         </button>
       </div>
 
-      {/* Lista */}
+      {/* Lista de Apostas Feitas */}
       <div className="space-y-3">
         {filtradas.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground text-sm border border-dashed border-border rounded-3xl font-medium">
@@ -227,6 +159,81 @@ export function ListaApostas({ apostas, onApostaExcluida }: ListaApostasProps) {
             />
           ))
         )}
+      </div>
+
+      <div className="border-t border-border pt-6 mt-6"></div>
+
+      {/* Painel de Rendimento e Estatísticas (Abaixo das Apostas) */}
+      <div className="space-y-4">
+        <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] ml-1">
+          Estatísticas & Rendimento de Jogos
+        </h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-card border border-border rounded-2xl p-4 flex flex-col justify-center shadow-sm">
+            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-wider">
+              Investimento
+            </span>
+            <span className="text-lg font-black text-foreground mt-1 tracking-tight">
+              {new Intl.NumberFormat("pt-BR", {
+                style: "currency",
+                currency: "BRL",
+              }).format(analytics.totalGasto)}
+            </span>
+          </div>
+
+          <div className="bg-card border border-border rounded-2xl p-4 flex flex-col justify-center shadow-sm">
+            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-wider">
+              Premiações
+            </span>
+            <div className="flex items-center gap-3 mt-1">
+              <div className="flex items-center gap-1" title="Quadras">
+                <span className="text-sm font-black text-yellow-500">
+                  {analytics.quadras}
+                </span>
+                <span className="text-[10px] font-bold text-muted-foreground">
+                  Qd
+                </span>
+              </div>
+              <div className="flex items-center gap-1" title="Quinas">
+                <span className="text-sm font-black text-yellow-600">
+                  {analytics.quinas}
+                </span>
+                <span className="text-[10px] font-bold text-muted-foreground">
+                  Qn
+                </span>
+              </div>
+              <div className="flex items-center gap-1" title="Senas">
+                <span className="text-sm font-black text-yellow-700">
+                  {analytics.senas}
+                </span>
+                <span className="text-[10px] font-bold text-muted-foreground">
+                  Sn
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-card border border-border rounded-2xl p-4 flex flex-col justify-center col-span-2 shadow-sm">
+            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-wider mb-2">
+              Dezenas Quentes (Top 5)
+            </span>
+            <div className="flex gap-2">
+              {analytics.numerosQuentes.map((n) => (
+                <div
+                  key={n}
+                  className="w-8 h-8 rounded-full bg-green-sphere/10 border border-green-sphere/30 text-green-sphere flex items-center justify-center text-xs font-black shadow-sm"
+                >
+                  {n.toString().padStart(2, "0")}
+                </div>
+              ))}
+              {analytics.numerosQuentes.length === 0 && (
+                <span className="text-xs text-muted-foreground">
+                  Nenhuma aposta registrada
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

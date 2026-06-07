@@ -8,7 +8,7 @@ pub mod models;
 use database::Database;
 use std::sync::Mutex;
 use tauri::{
-    menu::{Menu, MenuItem, Submenu},
+    menu::{Menu, MenuItem, Submenu, PredefinedMenuItem},
     tray::{TrayIconBuilder, TrayIconEvent},
     Emitter, Manager,
 };
@@ -94,12 +94,17 @@ pub fn run() {
             // Configurar Menu de Aplicativo (macOS)
             let m_about =
                 MenuItem::with_id(app, "about", "Sobre o MegaSena Monitor", true, None::<&str>)?;
-            let m_settings =
-                MenuItem::with_id(app, "settings", "Preferências...", true, None::<&str>)?;
-            let m_help = MenuItem::with_id(app, "help", "Ajuda", true, None::<&str>)?;
-            let m_quit = MenuItem::with_id(app, "quit", "Encerrar", true, Some("CmdOrCtrl+Q"))?;
+            let m_quit = PredefinedMenuItem::quit(app, Some("Fechar (QUIT)"))?;
 
-            let menu = Menu::with_items(app, &[&m_about, &m_settings, &m_help, &m_quit])?;
+            // Submenu principal "MegaSena Monitor" (ao lado da Maçã no macOS)
+            let app_submenu = Submenu::with_items(
+                app,
+                "MegaSena Monitor",
+                true,
+                &[&m_about, &m_quit],
+            )?;
+
+            let menu = Menu::with_items(app, &[&app_submenu])?;
             app.set_menu(menu)?;
 
             // Event Handler para o Menu
@@ -111,39 +116,19 @@ pub fn run() {
                         let _ = w.set_focus();
                     }
                 }
-                "settings" => {
-                    let _ = app.emit("open-view", "settings");
-                    if let Some(w) = app.get_webview_window("main") {
-                        let _ = w.show();
-                        let _ = w.set_focus();
-                    }
-                }
-                "help" => {
-                    let _ = app.emit("open-view", "help");
-                    if let Some(w) = app.get_webview_window("main") {
-                        let _ = w.show();
-                        let _ = w.set_focus();
-                    }
-                }
-                "quit" => {
-                    app.exit(0);
-                }
                 _ => {}
             });
 
             // Configurar Tray Icon
             let t_mostrar =
                 MenuItem::with_id(app, "mostrar", "Mostrar Monitor", true, None::<&str>)?;
-            let t_sair = MenuItem::with_id(app, "quit", "Sair", true, None::<&str>)?;
+            let t_sair = PredefinedMenuItem::quit(app, Some("Sair"))?;
             let tray_menu = Menu::with_items(app, &[&t_mostrar, &t_sair])?;
 
             let _tray = TrayIconBuilder::new()
                 .icon(app.default_window_icon().unwrap().clone())
                 .menu(&tray_menu)
                 .on_menu_event(|app, event| match event.id.as_ref() {
-                    "quit" => {
-                        app.exit(0);
-                    }
                     "mostrar" => {
                         if let Some(window) = app.get_webview_window("main") {
                             let _ = window.show();
