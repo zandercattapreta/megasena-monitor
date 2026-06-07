@@ -83,3 +83,16 @@ Após rodar `npm run tauri build`, os instaláveis finais estarão localizados e
 * **macOS**: `.dmg` (Instalador arrasta-e-solta fácil) e `.app` (Executável bruto comprimido).
 * **Windows**: `.msi` (Instalador completo do Windows Installer) e `.exe` (Executável bruto).
 * **Linux**: `.deb` (Pacotes Debian/Ubuntu padrão) e `.AppImage` (Binário autossuficiente universal).
+
+---
+
+## 🛠️ Solução de Problemas Comuns (Troubleshooting)
+
+### Erro 65 do Xcode: `PhaseScriptExecution Build Rust Code failed`
+* **Causa**: O Xcode compila em um ambiente isolado sem carregar o seu `.zshrc`. Se o compilador Rust estiver em `~/.cargo/bin`, o Xcode não encontrará o comando `cargo`, quebrando o build.
+* **Solução**: Crie links simbólicos na pasta do Homebrew (que é aberta ao Xcode e gravável pelo usuário) executando estes comandos no terminal do Mac:
+  ```bash
+  ln -sf /Users/zander/.cargo/bin/cargo /opt/homebrew/bin/cargo
+  ln -sf /Users/zander/.cargo/bin/rustc /opt/homebrew/bin/rustc
+  ln -sf /Users/zander/.cargo/bin/rustup /opt/homebrew/bin/rustup
+  ```
