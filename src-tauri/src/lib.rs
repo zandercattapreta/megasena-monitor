@@ -6,6 +6,7 @@
  *            constrói e configura os menus da barra do sistema, o ícone de bandeja (Tray Icon),
  *            registra os handlers para comandos expostos ao frontend e configura o comportamento
  *            de fechar para esconder a janela na bandeja (minimizar para tray).
+ *            Diferencia as características de Desktop (menus, tray, autostart) das de Mobile via #[cfg(desktop)].
  * QUEM O CHAMA: Executado pela função `main` do binário (`main.rs`).
  * QUEM ELE CHAMA: Inicializa e interage com `database.rs`, `api.rs` e as APIs do framework Tauri.
  * O QUE ESPERA RECEBER:
@@ -24,25 +25,33 @@ pub mod models;
 
 use database::Database;
 use std::sync::Mutex;
+use tauri::{Emitter, Manager};
+
+#[cfg(desktop)]
 use tauri::{
     menu::{Menu, MenuItem, Submenu},
     tray::{TrayIconBuilder, TrayIconEvent},
-    Emitter, Manager,
 };
 
 /// Inicializa e configura toda a aplicação Tauri.
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let mut builder = tauri::Builder::default()
         // Adiciona o plugin padrão de abertura de URLs/arquivos
         .plugin(tauri_plugin_opener::init())
-        // Adiciona suporte a inicialização automática junto com o sistema operacional
-        .plugin(tauri_plugin_autostart::init(
+        // Adiciona suporte a notificações do sistema operacional
+        .plugin(tauri_plugin_notification::init());
+
+    // Plugin de autostart está disponível apenas para desktops
+    #[cfg(desktop)]
+    {
+        builder = builder.plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             None,
-        ))
-        // Adiciona suporte a notificações do sistema operacional
-        .plugin(tauri_plugin_notification::init())
+        ));
+    }
+
+    builder
         // Bloco de configuração inicial executado ao iniciar a janela
         .setup(|app| {
             // Inicializar base de dados no diretório de dados da aplicação (App Data Dir)
@@ -118,72 +127,76 @@ pub fn run() {
                 }
             });
 
-            // Configurar Menu de Aplicativo (macOS)
-            let m_about =
-                MenuItem::with_id(app, "about", "Sobre o MegaSena Monitor", true, None::<&str>)?;
-            let m_quit = MenuItem::with_id(app, "quit", "Fechar (QUIT)", true, Some("CmdOrCtrl+Q"))?;
+            // Configurações de Menus e Tray disponíveis apenas para Desktops
+            #[cfg(desktop)]
+            {
+                // Configurar Menu de Aplicativo (macOS)
+                let m_about =
+                    MenuItem::with_id(app, "about", "Sobre o MegaSena Monitor", true, None::<&str>)?;
+                let m_quit = MenuItem::with_id(app, "quit", "Fechar (QUIT)", true, Some("CmdOrCtrl+Q"))?;
 
-            // Submenu principal "MegaSena Monitor" (ao lado do logo da Maçã no macOS)
-            let app_submenu = Submenu::with_items(
-                app,
-                "MegaSena Monitor",
-                true,
-                &[&m_about, &m_quit],
-            )?;
+                // Submenu principal "MegaSena Monitor" (ao lado do logo da Maçã no macOS)
+                let app_submenu = Submenu::with_items(
+                    app,
+                    "MegaSena Monitor",
+                    true,
+                    &[&m_about, &m_quit],
+                )?;
 
-            let menu = Menu::with_items(app, &[&app_submenu])?;
-            app.set_menu(menu)?;
+                let menu = Menu::with_items(app, &[&app_submenu])?;
+                app.set_menu(menu)?;
 
-            // Event Handler para o Menu principal do app
-            app.on_menu_event(move |app, event| match event.id.as_ref() {
-                "about" => {
-                    let _ = app.emit("open-view", "about");
-                    if let Some(w) = app.get_webview_window("main") {
-                        let _ = w.show();
-                        let _ = w.set_focus();
+                // Event Handler para o Menu principal do app
+                app.on_menu_event(move |app, event| match event.id.as_ref() {
+                    "about" => {
+                        let _ = app.emit("open-view", "about");
+                        if let Some(w) = app.get_webview_window("main") {
+                            let _ = w.show();
+                            let _ = w.set_focus();
+                        }
                     }
-                }
-                "quit" => {
-                    // Encerra imediatamente o processo do aplicativo
-                    std::process::exit(0);
-                }
-                _ => {}
-            });
-
-            // Configurar Menu do Ícone na Bandeja do Sistema (Tray Menu)
-            let t_mostrar =
-                MenuItem::with_id(app, "mostrar", "Mostrar Monitor", true, None::<&str>)?;
-            let t_sair = MenuItem::with_id(app, "quit", "Sair", true, None::<&str>)?;
-            let tray_menu = Menu::with_items(app, &[&t_mostrar, &t_sair])?;
-
-            // Inicializar e configurar o Ícone da Bandeja do Sistema
-            let _tray = TrayIconBuilder::new()
-                .icon(app.default_window_icon().unwrap().clone())
-                .menu(&tray_menu)
-                .on_menu_event(|app, event| match event.id.as_ref() {
                     "quit" => {
+                        // Encerra imediatamente o processo do aplicativo
                         std::process::exit(0);
                     }
-                    "mostrar" => {
-                        if let Some(window) = app.get_webview_window("main") {
-                            let _ = window.show();
-                            let _ = window.set_focus();
-                            let _ = window.emit("window-show", ());
-                        }
-                    }
                     _ => {}
-                })
-                .on_tray_icon_event(|tray, event| {
-                    if let TrayIconEvent::Click { .. } = event {
-                        let app = tray.app_handle();
-                        if let Some(window) = app.get_webview_window("main") {
-                            let _ = window.show();
-                            let _ = window.set_focus();
-                            let _ = window.emit("window-show", ());
+                });
+
+                // Configurar Menu do Ícone na Bandeja do Sistema (Tray Menu)
+                let t_mostrar =
+                    MenuItem::with_id(app, "mostrar", "Mostrar Monitor", true, None::<&str>)?;
+                let t_sair = MenuItem::with_id(app, "quit", "Sair", true, None::<&str>)?;
+                let tray_menu = Menu::with_items(app, &[&t_mostrar, &t_sair])?;
+
+                // Inicializar e configurar o Ícone da Bandeja do Sistema
+                let _tray = TrayIconBuilder::new()
+                    .icon(app.default_window_icon().unwrap().clone())
+                    .menu(&tray_menu)
+                    .on_menu_event(|app, event| match event.id.as_ref() {
+                        "quit" => {
+                            std::process::exit(0);
                         }
-                    }
-                })
-                .build(app)?;
+                        "mostrar" => {
+                            if let Some(window) = app.get_webview_window("main") {
+                                let _ = window.show();
+                                let _ = window.set_focus();
+                                let _ = window.emit("window-show", ());
+                            }
+                        }
+                        _ => {}
+                    })
+                    .on_tray_icon_event(|tray, event| {
+                        if let TrayIconEvent::Click { .. } = event {
+                            let app = tray.app_handle();
+                            if let Some(window) = app.get_webview_window("main") {
+                                let _ = window.show();
+                                let _ = window.set_focus();
+                                let _ = window.emit("window-show", ());
+                            }
+                        }
+                    })
+                    .build(app)?;
+            }
 
             Ok(())
         })
@@ -198,8 +211,9 @@ pub fn run() {
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
-        // Controla o fechamento de janela para ocultá-la em vez de finalizar o aplicativo
+        // Controla o fechamento de janela para ocultá-la em vez de finalizar o aplicativo (Apenas Desktops)
         .run(|_app_handle, event| match event {
+            #[cfg(desktop)]
             tauri::RunEvent::WindowEvent {
                 label,
                 event: tauri::WindowEvent::CloseRequested { api, .. },
