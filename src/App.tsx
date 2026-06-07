@@ -33,6 +33,7 @@ function App() {
 
   const isSyncing = useRef(false);
   const lastSyncTime = useRef(0);
+  const cadastroRef = useRef<HTMLElement>(null);
 
   const carregarApostas = async () => {
     console.log("[App] Carregando apostas...");
@@ -273,7 +274,7 @@ function App() {
         <div className="border-t border-border my-8"></div>
 
         {/* 2. CADASTRAR NOVA APOSTA (Segundo Item) */}
-        <section className="mb-10">
+        <section ref={cadastroRef} className="mb-10">
           <h2 className="text-xs font-black text-muted-foreground uppercase tracking-[0.3em] mb-6">
             Cadastrar Nova Aposta
           </h2>

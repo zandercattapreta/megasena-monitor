@@ -8,7 +8,7 @@ pub mod models;
 use database::Database;
 use std::sync::Mutex;
 use tauri::{
-    menu::{Menu, MenuItem},
+    menu::{Menu, MenuItem, Submenu},
     tray::{TrayIconBuilder, TrayIconEvent},
     Emitter, Manager,
 };
