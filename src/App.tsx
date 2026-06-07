@@ -308,9 +308,9 @@ function App() {
               {ultimosResultados.map((res) => (
                 <div
                   key={res.concurso}
-                  className="glass-card flex-shrink-0 p-5 rounded-2xl border border-border min-w-[260px] shadow-sm hover:shadow-md transition-all duration-300 bg-card"
+                  className="glass-card flex-shrink-0 p-3.5 rounded-2xl border border-border min-w-[190px] shadow-sm hover:shadow-md transition-all duration-300 bg-card"
                 >
-                  <div className="flex justify-between items-center mb-4">
+                  <div className="flex justify-between items-center mb-2.5">
                     <span className="text-xs font-black text-foreground">
                       C {res.concurso}
                     </span>
@@ -318,7 +318,7 @@ function App() {
                       {res.dataSorteio}
                     </span>
                   </div>
-                  <div className="flex gap-1.5">
+                  <div className="flex gap-1">
                     {res.numerosSorteados.map((num: number) => (
                       <NumeroEsfera
                         key={num}
