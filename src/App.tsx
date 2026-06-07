@@ -250,12 +250,39 @@ function App() {
       </header>
 
       <div className="max-w-2xl mx-auto py-8 px-4">
-        <section className="mb-8">
+        {/* 1. MINHAS APOSTAS (Primeiro Item) */}
+        <section className="mb-10">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xs font-black text-muted-foreground uppercase tracking-[0.3em]">
+              MINHAS APOSTAS ({apostas.length}/10)
+            </h2>
+          </div>
+
+          {loading ? (
+            <div className="text-center py-12 text-muted-foreground">
+              Carregando apostas...
+            </div>
+          ) : (
+            <ListaApostas
+              apostas={apostas}
+              onApostaExcluida={carregarApostas}
+            />
+          )}
+        </section>
+
+        <div className="border-t border-border my-8"></div>
+
+        {/* 2. CADASTRAR NOVA APOSTA (Segundo Item) */}
+        <section className="mb-10">
+          <h2 className="text-xs font-black text-muted-foreground uppercase tracking-[0.3em] mb-6">
+            Cadastrar Nova Aposta
+          </h2>
           <FormCadastro onApostaAdicionada={carregarApostas} />
         </section>
 
         <div className="border-t border-border my-8"></div>
 
+        {/* 3. ÚLTIMOS RESULTADOS (Terceiro Item) */}
         {ultimosResultados.length > 0 && (
           <section className="mb-10 overflow-hidden">
             <h2 className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] mb-4 ml-1 flex items-center gap-2">
@@ -291,25 +318,6 @@ function App() {
             </div>
           </section>
         )}
-
-        <section>
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xs font-black text-muted-foreground uppercase tracking-[0.3em]">
-              MINHAS APOSTAS ({apostas.length}/10)
-            </h2>
-          </div>
-
-          {loading ? (
-            <div className="text-center py-12 text-muted-foreground">
-              Carregando apostas...
-            </div>
-          ) : (
-            <ListaApostas
-              apostas={apostas}
-              onApostaExcluida={carregarApostas}
-            />
-          )}
-        </section>
       </div>
       <Toaster position="bottom-right" />
 
