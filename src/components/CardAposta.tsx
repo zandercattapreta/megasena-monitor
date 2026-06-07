@@ -1,3 +1,22 @@
+/*
+ * PROGRAMA: CardAposta.tsx
+ * DESCRIÇÃO: Este componente renderiza individualmente um card que representa um bilhete de aposta da Mega-Sena.
+ *            Exibe os números jogados, permite deletar o bilhete e exibe uma área expansível contendo
+ *            o histórico completo de acertos e dezenas sorteadas de cada concurso em que o jogo participa (Teimosinha).
+ * QUEM O CHAMA: Chamado pelo componente `ListaApostas.tsx` para cada item da listagem.
+ * QUEM ELE CHAMA:
+ *   - Componentes: `NumeroEsfera.tsx` (para exibir os círculos numerados das dezenas).
+ *   - Serviços: `excluirAposta` de `services/tauri.ts` (para deletar aposta no banco de dados).
+ * O QUE ESPERA RECEBER:
+ *   - `aposta`: Objeto com dados estruturados da aposta (Aposta).
+ *   - `onExcluida`: Callback executado após a exclusão com sucesso para atualizar a listagem pai.
+ * O QUE ENVIA (RETORNA):
+ *   - Estrutura JSX visual com botões, cabeçalho de status da aposta e esferas de dezenas.
+ *
+ * Copyright (C) 2025 Zander Cattapreta
+ * Licensed under the MIT License
+ */
+
 import { useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { Aposta } from '../types';
@@ -10,9 +29,11 @@ interface CardApostaProps {
 }
 
 export function CardAposta({ aposta, onExcluida }: CardApostaProps) {
+  // Controle de estado de expansão de detalhes e loading do botão remover
   const [expandido, setExpandido] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
 
+  /// Trata a exclusão imediata do bilhete chamando a API do Rust
   const handleExcluir = async () => {
     console.log(`[UI] Executando exclusão imediata da aposta ID: ${aposta.id}`);
     setExcluindo(true);
@@ -29,12 +50,14 @@ export function CardAposta({ aposta, onExcluida }: CardApostaProps) {
     }
   };
 
+  // String formatada descrevendo a vigência de concursos
   const concursosRestantes = aposta.quantidadeConcursos > 1
     ? `${aposta.quantidadeConcursos} concursos`
     : `Concurso ${aposta.concursoInicial}`;
 
   return (
     <div className={`glass-card rounded-3xl overflow-hidden shadow-sm transition-all duration-300 hover:shadow-md border border-border bg-card ${expandido ? 'ring-2 ring-green-sphere/20' : ''}`}>
+      
       {/* Header - Sempre visível */}
       <div className="flex items-start justify-between p-5 pb-2">
         <div 
@@ -61,7 +84,7 @@ export function CardAposta({ aposta, onExcluida }: CardApostaProps) {
         </button>
       </div>
 
-      {/* Números - Sempre visível */}
+      {/* Números apostados - Sempre visível */}
       <div 
         className="flex flex-wrap gap-2 px-5 pb-5 cursor-pointer"
         onClick={() => setExpandido(!expandido)}
@@ -71,7 +94,7 @@ export function CardAposta({ aposta, onExcluida }: CardApostaProps) {
         ))}
       </div>
 
-      {/* Detalhes Expandidos */}
+      {/* Detalhes Expandidos (Área do histórico de conferências) */}
       {expandido && (
         <div className="mx-5 pb-5 pt-5 border-t border-border space-y-5 animate-in slide-in-from-top-2 duration-300">
           <div className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest flex justify-between items-center opacity-70">
@@ -129,6 +152,7 @@ export function CardAposta({ aposta, onExcluida }: CardApostaProps) {
                         <NumeroEsfera 
                           key={num} 
                           numero={num} 
+                          // Esfera fica selecionada e com cor de destaque se for um número acertado pelo jogo do usuário
                           selecionado={aposta.numeros.includes(num)} 
                           acertou={aposta.numeros.includes(num)}
                           tamanho="small" 

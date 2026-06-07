@@ -1,68 +1,117 @@
-# 🧪 Plano de Testes e Homologação - MegaSena Monitor
+# Plano de Testes e Homologação - MegaSena Monitor
 
-Este plano de testes garante a estabilidade, integridade referencial do banco de dados SQLite local, a resiliência de conexão de rede e a aderência visual do **MegaSena Monitor** perante atualizações na aplicação.
+Este documento serve como o guia oficial do desenvolvedor para a execução, manutenção e homologação de testes no **MegaSena Monitor**. Ele descreve os testes unitários do backend (Rust), as estratégias de mocks de rede e o fluxo manual de testes para pré-release.
 
 ---
 
-## 🤖 1. Testes Automatizados no Backend (Rust)
+## 🧪 1. Testes Unitários e de Integração locais (Rust Backend)
 
-O backend do aplicativo possui testes de unidade embarcados que podem ser validados a qualquer momento.
+O backend do aplicativo utiliza o framework integrado de testes do Rust (`cargo test`) para certificar as regras de negócio cruciais e a persistência de banco de dados de maneira offline-first.
 
-### Executar Testes de Unidade locais:
-A partir do diretório raiz, rode:
+### Execução de Testes Unitários
+Para rodar todos os testes unitários offline padrão a partir do diretório raiz:
 ```bash
 cargo test --manifest-path src-tauri/Cargo.toml
 ```
 
-Os testes cobertos validam:
-1. **Regra de Negócio de Acertos (`src-tauri/src/commands.rs`)**:
-   * `test_calcular_acertos_sena`: Valida acerto total (6 dezenas).
-   * `test_calcular_acertos_quadra`: Valida acerto parcial de 4 dezenas.
-   * `test_calcular_acertos_zero`: Valida acerto de zero dezenas.
-2. **Persistência local do SQLite (`src-tauri/src/database.rs`)**:
-   * `test_db_adicionar_listar_apostas`: Valida inserção, codificação de JSON e recuperação de listas no banco em memória.
-   * `test_db_processar_acertos`: Simula um fluxo de jogo simulado, persiste resultados, dispara o cruzamento de dados e certifica que as contagens de acertos foram salvas perfeitamente.
+### O que está sendo testado:
+
+#### A. Regras de Negócio e Cálculos (`src-tauri/src/commands.rs`)
+Testa o cálculo matemático puro que confere quantos acertos a aposta obteve contra as dezenas oficiais:
+* **`test_calcular_acertos_sena`**: Garante que o acerto de todas as 6 dezenas do sorteio retorne classificação máxima.
+* **`test_calcular_acertos_quadra`**: Valida a detecção de acerto parcial de 4 dezenas (Quadra).
+* **`test_calcular_acertos_zero`**: Certifica que a pontuação é calculada corretamente como zero quando nenhum número coincide.
+
+#### B. Persistência de Dados e SQLite (`src-tauri/src/database.rs`)
+Para evitar poluir o disco do desenvolvedor com arquivos temporários ou dados de teste, o banco de dados é inicializado em **memória do processo** (`:memory:`):
+* **`test_db_adicionar_listar_apostas`**: Cria o banco em memória, insere jogos convertendo vetores de números para JSON e valida se o retorno possui integridade de tipos e listagem coerente.
+* **`test_db_processar_acertos`**: Simula o recebimento de dezenas oficiais, executa a query SQL de vinculação muitos-para-muitos (`apostas_resultados`) e confere se a contagem foi atualizada no banco.
 
 ---
 
-## 🔌 2. Testes de Integração de API (Mocks de Rede)
+## 📡 2. Testes de Integração de Rede e APIs (`src-tauri/src/api.rs`)
 
-Durante desenvolvimentos offline ou testes de resiliência, você pode simular instabilidade ou payload customizado da API externa de resultados:
+O arquivo `api.rs` contém testes que realizam chamadas HTTP reais aos servidores da Caixa Econômica Federal e servidores de fallback alternativos (Guidi API).
 
-### Mockando a API com Servidor Local
-Usando ferramentas como o **Mockoon** ou simplesmente subindo um servidor Express simples em localhost na porta `4000`, simule as seguintes respostas de rede:
+Como essas requisições exigem conexão ativa com a internet e dependem da disponibilidade de serviços de terceiros, elas são marcadas com a anotação `#[ignore]` no código. Isso evita que falhas temporárias de rede quebrem builds automatizadas de CI/CD.
 
-1. **Cenário de Conexão Offline**:
-   * Force a API a retornar um status de erro `500 Internal Server Error` ou cause um timeout artificial maior que 10 segundos.
-   * **Resultado esperado**: O MegaSena Monitor deve tentar buscar imediatamente na API Guidi de Fallback. Se ambas falharem, deve exibir a mensagem amigável *"Não foi possível obter resultado do concurso..."* sem quebrar a tela de controle do usuário.
-2. **Cenário de Acumulação**:
-   * Retorne um JSON fictício com o campo `"acumulado": true`.
-   * **Resultado esperado**: O app deve renderizar o badge em destaque em laranja "ACUMULOU!" ao abrir os detalhes.
-3. **Cenário de Sorteio com Ganhador**:
-   * Retorne um JSON fictício com o campo `"acumulado": false` e `"listaRateioPremio"` detalhado.
-   * **Resultado esperado**: O app deve renderizar em verde "SAIU O PRÊMIO!" e listar corretamente a quantidade de ganhadores e o valor pago para a Sena.
+### Executando Testes Ignorados (Requer Internet):
+Para forçar a execução de todos os testes ignorados de integração de API:
+```bash
+cargo test --manifest-path src-tauri/Cargo.toml -- --ignored
+```
+
+Para rodar especificamente um dos testes de API:
+```bash
+cargo test --manifest-path src-tauri/Cargo.toml test_fetch_caixa_api -- --ignored
+```
 
 ---
 
-## 📋 3. Checklist de Homologação Manual (Pré-Release)
+## 🛠️ 3. Como Criar Novos Testes Unitários
 
-Antes de aprovar e publicar uma nova versão final do MegaSena Monitor, execute o checklist completo de homologação manual em ambiente de homologação:
+Ao estender as funcionalidades do MegaSena Monitor, siga estas diretrizes para criar novos testes unitários:
 
-### A. Cadastro de Apostas
-* [ ] Cadastrar uma aposta simples de 6 dezenas.
-* [ ] Cadastrar uma aposta máxima de 20 dezenas (certificando que o grid numérico não bloqueie após o 15º item).
-* [ ] Tentar submeter uma aposta inválida sem selecionar nenhuma dezena (o botão de confirmar deve estar desabilitado).
-* [ ] Cadastrar uma aposta utilizando múltiplos concursos (Teimosinha de 8 repetições).
+### Estrutura Padrão
+Escreva os testes dentro do módulo `tests` marcado com `#[cfg(test)]` no final do arquivo de código que deseja testar:
+```rust
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-### B. Conferência e Interface Visual
-* [ ] Clicar no botão "Verificar" e certificar que o balão de carregamento flutuante ("toast") apareça durante a consulta.
-* [ ] Expandir um card de aposta e verificar se a data de criação e as informações de concurso estão formatadas em formato pt-BR.
-* [ ] Confirmar se dezenas sorteadas que coincidem com a aposta estão animadas com a borda brilhante `.winning-sphere` de cor verde.
-* [ ] Testar alternar de filtro para "Todas", "Ativas", "Vencidas" e "Premiadas" e garantir que as contagens de cards estejam coerentes.
+    #[test]
+    fn meu_novo_teste_unitario() {
+        // Preparação
+        let valor_entrada = 42;
 
-### C. Sistema Operacional & Recursos Nativos
-* [ ] **Gerenciamento de Preferências**: Abrir o painel de preferências e testar a troca de temas (Claro, Escuro e Automático). O fundo do app deve responder instantaneamente com transição suave.
-* [ ] **Inicialização com o Sistema**: Ativar o switch de inicialização automática, fechar o app, reiniciar o computador e verificar se o app reabre minimizado na bandeja.
-* [ ] **Fechar janela para Bandeja (Tray)**: Clicar no botão "Fechar" (X) da janela principal. A janela deve sumir da tela, mas o processo deve continuar rodando em segundo plano.
-* [ ] **Bandeja do Sistema**: Clicar no ícone do trevo de 4 folhas na barra de status superior (macOS) ou na área de notificação do Windows e clicar em "Mostrar Monitor". A tela principal deve ser reexibida com foco.
-* [ ] **Disparo de Notificações**: Cadastrar uma aposta com números conhecidos que darão prêmio (ex: Quadra) em um concurso antigo, verificar resultados e checar se o sistema operacional exibe a notificação nativa flutuante: *"MegaSena Monitor - Você Ganhou! 🍀"* acompanhada do efeito sonoro do sistema.
+        // Execução
+        let resultado = processar_dado(valor_entrada);
+
+        // Verificação
+        assert_eq!(resultado, esperado);
+    }
+}
+```
+
+### Dicas para Testes com Banco de Dados:
+Sempre use a função helper `setup_test_db()` para obter uma conexão isolada em memória do SQLite:
+```rust
+fn setup_test_db() -> Database {
+    let db = Database::new(PathBuf::from(":memory:")).unwrap();
+    db.init().unwrap();
+    db
+}
+```
+
+---
+
+## 🔌 4. Simulação Manual de Instabilidades de Rede (Mocks de API)
+
+Durante o desenvolvimento frontend ou auditoria de resiliência, você pode subir mocks da API de loterias em localhost (ex: porta `4000`) para testar o comportamento do aplicativo perante cenários incomuns:
+
+1. **Cenário de API Fora do Ar (Status 500 / Timeouts)**:
+   * **Como simular**: Aponte a requisição para uma porta inválida ou configure o Mockoon para travar a resposta por 15 segundos.
+   * **Comportamento Esperado**: O app deve aguardar até o limite do timeout (definido de forma ágil para a exploração de fronteira e normal para verificação ativa) e tentar o fallback Guidi sem interromper a navegação da UI.
+2. **Cenário de Concurso Acumulado**:
+   * **JSON Esperado**: Campo `"acumulado": true`.
+   * **Comportamento Esperado**: A interface deve exibir o alerta laranja em destaque *"ACUMULOU!"* na tela de conferência.
+3. **Cenário de Vencedor do Prêmio Máximo**:
+   * **JSON Esperado**: Campo `"acumulado": false` acompanhado de dados válidos em `"listaRateioPremio"`.
+   * **Comportamento Esperado**: A interface deve indicar *"SAIU O PRÊMIO PRINCIPAL!"* e listar os ganhadores.
+
+---
+
+## 📋 5. Checklist para Homologação de Pré-Release (Manual)
+
+Antes de gerar e homologar uma nova build de release, certifique-se de preencher o seguinte checklist básico:
+
+### Interface e Interação
+* [ ] **Cadastro Simples**: Tente cadastrar uma aposta simples de 6 dezenas.
+* [ ] **Limites do Grid**: Selecione mais de 15 dezenas (limite máximo de 20) e valide se o grid bloqueia cliques subsequentes.
+* [ ] **Teimosinha**: Adicione uma aposta com vigência de 12 concursos seguidos e confirme se as 12 linhas aparecem corretas na área de histórico.
+* [ ] **Conferência**: Clique em "Verificar" e observe se os toasts de loading e sucesso funcionam sequencialmente.
+
+### Comportamento do Sistema
+* [ ] **Troca de Temas**: Alterne o tema nas configurações (Claro/Escuro/Auto) e confira se a transição ocorre instantaneamente.
+* [ ] **Minimização**: Feche a janela principal no botão de fechar (X) e verifique se ela é oculta na bandeja do sistema sem matar o processo.
+* [ ] **Notificações**: Force a simulação de um sorteio premiado e verifique se a notificação nativa do sistema operacional é exibida com sucesso na barra de alertas do OS.

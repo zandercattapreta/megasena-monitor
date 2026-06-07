@@ -1,19 +1,20 @@
 /*
- * MegaSena Monitor - Minimalist desktop application for managing bets.
+ * PROGRAMA: GridNumeros.tsx
+ * DESCRIÇÃO: Este componente renderiza a grade interativa de números de 1 a 60.
+ *            Controla a seleção de dezenas para aposta respeitando um limite máximo definido.
+ *            Ao clicar em um número, inclui ou remove o elemento na listagem, ordenando-o de forma crescente.
+ * QUEM O CHAMA: Renderizado dentro do componente `FormCadastro.tsx` (formulário de nova aposta).
+ * QUEM ELE CHAMA:
+ *   - Componentes: `NumeroEsfera.tsx` (para desenhar individualmente cada esfera clicável).
+ * O QUE ESPERA RECEBER:
+ *   - `selecionados`: Vetor com os números atualmente selecionados na aposta (number[]).
+ *   - `onChange`: Callback disparado ao alterar a listagem de dezenas selecionadas.
+ *   - `maxSelecao`: Limite máximo de dezenas que podem ser selecionadas (padrão 20).
+ * O QUE ENVIA (RETORNA):
+ *   - Retorna um contêiner em grid HTML composto por 60 botões em formato de esferas.
+ *
  * Copyright (C) 2025 Zander Cattapreta
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ * Licensed under the GNU General Public License v3
  */
 
 import { NumeroEsfera } from './NumeroEsfera';
@@ -25,14 +26,16 @@ interface GridNumerosProps {
 }
 
 export function GridNumeros({ selecionados, onChange, maxSelecao = 20 }: GridNumerosProps) {
+  // Inicializa um vetor estático contendo dezenas de 1 a 60
   const numeros = Array.from({ length: 60 }, (_, i) => i + 1);
 
+  /// Trata a ativação ou desativação de uma dezena da grade
   const toggleNumero = (num: number) => {
     if (selecionados.includes(num)) {
-      // Desselecionar
+      // Se já estiver selecionado, remove do vetor
       onChange(selecionados.filter(n => n !== num));
     } else if (selecionados.length < maxSelecao) {
-      // Selecionar (ordenado)
+      // Se estiver abaixo do limite máximo de dezenas, adiciona e ordena o vetor de forma crescente
       onChange([...selecionados, num].sort((a, b) => a - b));
     }
   };

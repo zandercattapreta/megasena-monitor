@@ -1,19 +1,20 @@
 /*
- * MegaSena Monitor - Minimalist desktop application for managing bets.
+ * PROGRAMA: FormCadastro.tsx
+ * DESCRIÇÃO: Este componente gerencia o formulário de cadastro de novas apostas da Mega-Sena.
+ *            Possui campo para o número do concurso inicial, um preview com as esferas selecionadas,
+ *            uma grade (grid) interativa para seleção de 6 a 20 números, opções de teimosinha
+ *            e faz a submissão dos dados chamando o comando correspondente no Tauri (Rust).
+ * QUEM O CHAMA: Renderizado dentro de um modal interativo a partir de `App.tsx`.
+ * QUEM ELE CHAMA:
+ *   - Componentes: `GridNumeros.tsx` (grade de botões numéricos) e `NumeroEsfera.tsx` (preview das dezenas).
+ *   - Serviços: `adicionarAposta` e `obterUltimoConcurso` do arquivo `services/tauri.ts`.
+ * O QUE ESPERA RECEBER:
+ *   - `onApostaAdicionada`: Callback disparado após o sucesso na inserção para atualizar a lista principal.
+ * O QUE ENVIA (RETORNA):
+ *   - Formulário HTML estruturado em JSX para gerenciamento de input do usuário e interações de toque/clique.
+ *
  * Copyright (C) 2025 Zander Cattapreta
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ * Licensed under the MIT License
  */
 
 import { useState, useEffect } from 'react';
@@ -27,16 +28,17 @@ interface FormCadastroProps {
 }
 
 export function FormCadastro({ onApostaAdicionada }: FormCadastroProps) {
+  // Estados locais para controlar inputs do formulário e dezenas selecionadas
   const [concurso, setConcurso] = useState('');
   const [selecionados, setSelecionados] = useState<number[]>([]);
   const [teimosinha, setTeimosinha] = useState(1);
   const [loading, setLoading] = useState(false);
 
+  // Busca o concurso recente na inicialização para sugerir como padrão
   useEffect(() => {
     const carregarUltimo = async () => {
       try {
         const ultimo = await obterUltimoConcurso();
-        // Sugerir o último sorteado como padrão (ou o próximo se preferir, mas o último é melhor para conferência)
         setConcurso(ultimo.toString());
       } catch (error) {
         console.warn('Falha ao obter último concurso:', error);
@@ -45,8 +47,10 @@ export function FormCadastro({ onApostaAdicionada }: FormCadastroProps) {
     carregarUltimo();
   }, []);
 
+  // Regra de validação: deve possuir entre 6 e 20 números selecionados e campo concurso preenchido
   const isValido = selecionados.length >= 6 && selecionados.length <= 20 && concurso !== '';
 
+  /// Trata a submissão do formulário enviando os dados para a persistência SQLite no Rust
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     console.log('[FORM] Tentando submeter aposta:', { selecionados, concurso, teimosinha });
@@ -64,10 +68,12 @@ export function FormCadastro({ onApostaAdicionada }: FormCadastroProps) {
       console.log('[FORM] Chamando adicionarAposta...');
       const novaAposta = await adicionarAposta(selecionados, parseInt(concurso), teimosinha);
       console.log('[FORM] Aposta adicionada com sucesso:', novaAposta);
-      // Reset form
+      
+      // Reseta a seleção e a teimosinha, preservando o concurso padrão
       setSelecionados([]);
-      setConcurso(concurso); // Manter o concurso para facilitar múltiplas apostas? Ou resetar? Original era resetar.
       setTeimosinha(1);
+      
+      // Executa o callback pai de recarregamento
       onApostaAdicionada();
       toast.success('Aposta cadastrada!');
     } catch (error: any) {
@@ -82,7 +88,7 @@ export function FormCadastro({ onApostaAdicionada }: FormCadastroProps) {
     <form onSubmit={handleSubmit} className="space-y-4 p-6 bg-card rounded-3xl border border-border shadow-sm transition-all">
       <h2 className="text-xs font-black text-muted-foreground uppercase tracking-[0.3em] mb-4">Nova Aposta</h2>
 
-      {/* Campo Concurso */}
+      {/* Input de Concurso Inicial */}
       <div>
         <label className="block text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1 ml-1">
           Concurso Inicial
@@ -97,7 +103,7 @@ export function FormCadastro({ onApostaAdicionada }: FormCadastroProps) {
         />
       </div>
 
-      {/* Preview dos Selecionados */}
+      {/* Visualização de Preview dos números selecionados */}
       <div className="space-y-2">
         <label className="block text-[10px] font-bold text-muted-foreground uppercase tracking-widest ml-1">
           Números Selecionados ({selecionados.length})
@@ -114,12 +120,12 @@ export function FormCadastro({ onApostaAdicionada }: FormCadastroProps) {
         </div>
       </div>
 
-      {/* Grid de Números */}
+      {/* Grade interativa para clicar nos números */}
       <div className="py-2">
         <GridNumeros selecionados={selecionados} onChange={setSelecionados} />
       </div>
 
-      {/* Dropdown Teimosinha */}
+      {/* Seleção de repetição de teimosinha */}
       <div>
         <label className="block text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1 ml-1">
           Repetições (Teimosinha)
@@ -137,7 +143,7 @@ export function FormCadastro({ onApostaAdicionada }: FormCadastroProps) {
         </select>
       </div>
 
-      {/* Botão Adicionar */}
+      {/* Botão de confirmação de cadastro */}
       <div className="pt-2">
         <button
           type="submit"

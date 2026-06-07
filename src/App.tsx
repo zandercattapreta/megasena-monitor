@@ -1,8 +1,21 @@
 /*
- * MegaSena Monitor - Minimalist desktop application for managing bets.
- * Copyright (C) 2025 Zander Cattapreta
+ * PROGRAMA: App.tsx
+ * DESCRIÇÃO: Este é o componente raiz da aplicação MegaSena Monitor no React.
+ *            Ele inicializa o estado do tema visual, controla a renderização de modais (cadastro,
+ *            configurações, ajuda, sobre), consome a ponte de APIs do Tauri em background,
+ *            escuta eventos do Tauri (como reabertura da janela e sinal de novos resultados)
+ *            e gerencia a sincronização reativa de dados, evitando recarregamento abrupto de página.
+ * QUEM O CHAMA: Chamado por `main.tsx` para inicializar a árvore DOM do React.
+ * QUEM ELE CHAMA:
+ *   - Subcomponentes: `FormCadastro.tsx`, `ListaApostas.tsx`, `NumeroEsfera.tsx`, `ModalResultado.tsx`, `SettingsModal.tsx`.
+ *   - Serviços: `services/tauri.ts` (APIs Rust) e `services/settings.ts` (tema/inicialização).
+ * O QUE ESPERA RECEBER:
+ *   - Não espera receber propriedades (Props) externas por ser o componente raiz.
+ * O QUE ENVIA (RETORNA):
+ *   - Retorna o código JSX contendo a estrutura de layout e a árvore de componentes da interface gráfica.
  *
- * This program is licensed under the MIT License.
+ * Copyright (C) 2025 Zander Cattapreta
+ * Licensed under the MIT License
  */
 
 import { useState, useEffect, useRef } from "react";
@@ -20,22 +33,25 @@ import { Aposta, Resultado } from "./types";
 import "./App.css";
 
 function App() {
+  // Estados para dados de apostas e resultados do sorteio
   const [apostas, setApostas] = useState<Aposta[]>([]);
   const [ultimosResultados, setUltimosResultados] = useState<Resultado[]>([]);
   const [lastResultado, setLastResultado] = useState<Resultado | null>(null);
+  
+  // Estados de controle de carregamento, sincronismo e modais
   const [loading, setLoading] = useState(true);
   const [isBackgroundSyncing, setIsBackgroundSyncing] = useState(false);
   const [verificando, setVerificando] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showCadastroModal, setShowCadastroModal] = useState(false);
-  const [settingsView, setSettingsView] = useState<
-    "settings" | "about" | "help"
-  >("settings");
+  const [settingsView, setSettingsView] = useState<"settings" | "about" | "help">("settings");
   const [initError, setInitError] = useState<string | null>(null);
 
+  // Refs de controle para evitar chamadas de sincronismo simultâneas ou em loops infinitos
   const isSyncing = useRef(false);
   const lastSyncTime = useRef(0);
 
+  /// Carrega as apostas do banco de dados local através do Tauri Bridge
   const carregarApostas = async () => {
     console.log("[App] Carregando apostas...");
     setLoading(true);
@@ -46,12 +62,12 @@ function App() {
     } catch (error) {
       console.error("[App] Erro ao carregar apostas:", error);
       setApostas([]);
-      // Não bloquear a UI completamente por isso
     } finally {
       setLoading(false);
     }
   };
 
+  /// Dispara a verificação manual de resultados para todas as apostas cadastradas
   const handleVerificarResultados = async () => {
     if (apostas.length === 0) {
       toast.error("Nenhuma aposta cadastrada para verificar.", { icon: "⚠️" });
@@ -60,6 +76,7 @@ function App() {
 
     setVerificando(true);
     try {
+      // Extrai a lista de concursos únicos que as apostas cobrem
       const concursosUnicos = Array.from(
         new Set<number>(
           apostas.flatMap((aposta) =>
@@ -77,7 +94,7 @@ function App() {
         id: "verificando",
       });
 
-      // Limitar concorrência para reduzir timeouts/bloqueios em fontes externas
+      // Limita a concorrência a 4 requisições em paralelo para evitar bloqueios ou timeouts em APIs externas
       const maxConcurrent = 4;
       const results: PromiseSettledResult<Resultado>[] = [];
 
@@ -89,15 +106,18 @@ function App() {
         results.push(...chunkResults);
       }
 
-      let verificadas = results.filter((r) => r.status === "fulfilled").length;
-      let erros = results.length - verificadas;
+      const verificadas = results.filter((r) => r.status === "fulfilled").length;
+      const erros = results.length - verificadas;
 
       toast.dismiss("verificando");
-      if (verificadas > 0)
+      if (verificadas > 0) {
         toast.success(`${verificadas} concurso(s) conferido(s)!`, {
           icon: "🎉",
         });
-      if (erros > 0) toast.error(`${erros} concurso(s) indisponíveis.`);
+      }
+      if (erros > 0) {
+        toast.error(`${erros} concurso(s) indisponíveis.`);
+      }
 
       await carregarApostas();
     } catch (error) {
@@ -108,19 +128,21 @@ function App() {
     }
   };
 
+  // Efeito principal de montagem do componente React
   useEffect(() => {
     console.log("[App] Componente Montado");
 
-    // Aplicar tema
+    // Aplica o tema visual preferido do usuário salvo no LocalStorage
     try {
       SettingsService.applyTheme(SettingsService.getTheme());
     } catch (e) {
       console.error("[App] Erro ao aplicar tema:", e);
     }
 
+    /// Executa a sincronização em background dos resultados com a API e banco de dados local
     const syncResultados = async (showSplash: boolean = false) => {
       const now = Date.now();
-      // Rate-limit de 10 segundos para evitar loops infinitos disparados por eventos nativos de foco/layout
+      // Limita o sincronismo a no máximo uma vez a cada 10 segundos
       if (now - lastSyncTime.current < 10000) {
         console.log("[App] Sincronização ignorada por rate limit");
         return;
@@ -136,6 +158,7 @@ function App() {
         const ultimo = await tauri.obterUltimoConcurso();
         console.log("[App] Último concurso detectado:", ultimo);
 
+        // Carrega os últimos 36 concursos históricos de sorteios
         const resultados = await tauri.carregarUltimosResultados(ultimo, 36);
         console.log("[App] Resultados sincronizados:", resultados.length);
 
@@ -163,13 +186,13 @@ function App() {
       }
     };
 
-    // Carregar apostas locais imediatamente (inicialização instantânea < 50ms)
+    // Carrega a listagem de apostas locais instantaneamente (< 50ms)
     carregarApostas();
 
-    // Sincronizar concursos em background de forma assíncrona (não-bloqueante)
+    // Sincroniza em background de forma assíncrona
     syncResultados(true);
 
-    // Listeners
+    // Configura temporizador de verificação diária
     let lastDate = new Date().toLocaleDateString();
     const interval = setInterval(() => {
       const current = new Date().toLocaleDateString();
@@ -179,7 +202,9 @@ function App() {
       }
     }, 60000);
 
+    // Registra listeners de comunicação inter-processos com o Rust (Tauri Events)
     const unlistenShow = listen("window-show", () => syncResultados(false));
+    
     const unlistenView = listen("open-view", (event: { payload: string }) => {
       if (event.payload === "new_bet") {
         setShowCadastroModal(true);
@@ -188,11 +213,15 @@ function App() {
         setShowSettings(true);
       }
     });
+
+    // Correção: Atualização reativa e não-destrutiva ao receber evento de novos resultados em background
     const unlistenNovo = listen("novo-resultado", () => {
-      // Recarrega a view para refletir os resultados processados em background
-      window.location.reload();
+      console.log("[App] Evento de novo resultado recebido. Atualizando estado de forma reativa...");
+      carregarApostas();
+      syncResultados(false);
     });
 
+    // Cleanup dos listeners ao desmontar o componente React
     return () => {
       clearInterval(interval);
       unlistenShow.then((f) => f());
@@ -201,6 +230,7 @@ function App() {
     };
   }, []);
 
+  // Exibe tela de erro de inicialização caso a ponte do Tauri não responda
   if (initError) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-8 text-center bg-background">
@@ -220,6 +250,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-background text-foreground transition-colors duration-500">
+      {/* Barra superior de cabeçalho */}
       <header className="p-6 pb-2 sticky top-0 bg-background/80 backdrop-blur-md z-10 border-b border-border">
         <div className="container mx-auto max-w-lg flex justify-between items-center h-12">
           <div className="flex items-center gap-3">
@@ -267,8 +298,9 @@ function App() {
         </div>
       </header>
 
+      {/* Conteúdo principal */}
       <div className="max-w-2xl mx-auto py-8 px-4">
-        {/* 1. MINHAS APOSTAS (Primeiro Item) */}
+        {/* Seção 1: Minhas Apostas */}
         <section className="mb-10">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xs font-black text-muted-foreground uppercase tracking-[0.3em]">
@@ -297,7 +329,7 @@ function App() {
 
         <div className="border-t border-border my-8"></div>
 
-        {/* 2. ÚLTIMOS RESULTADOS (Segundo Item) */}
+        {/* Seção 2: Últimos Resultados */}
         {ultimosResultados.length > 0 && (
           <section className="mb-10 overflow-hidden">
             <h2 className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] mb-4 ml-1 flex items-center gap-2">
@@ -336,7 +368,7 @@ function App() {
       </div>
       <Toaster position="bottom-right" />
 
-      {/* MODAL: Cadastro de Nova Aposta */}
+      {/* Modal de cadastro de nova aposta */}
       {showCadastroModal && (
         <div 
           onClick={() => setShowCadastroModal(false)}
@@ -356,6 +388,7 @@ function App() {
         </div>
       )}
 
+      {/* Modal exibindo o último sorteio detectado na abertura */}
       {lastResultado && (
         <ModalResultado
           resultado={lastResultado}
@@ -364,6 +397,7 @@ function App() {
         />
       )}
 
+      {/* Modal de Configurações gerais */}
       {showSettings && (
         <SettingsModal
           initialView={settingsView}

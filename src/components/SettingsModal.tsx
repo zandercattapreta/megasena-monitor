@@ -1,3 +1,23 @@
+/*
+ * PROGRAMA: SettingsModal.tsx
+ * DESCRIÇÃO: Este componente gerencia a interface do painel modal de configurações da aplicação.
+ *            Possui três abas de visualização: Preferências (ajuste de tema visual escuro/claro e
+ *            inicialização automática do app no boot do OS), Ajuda (instruções de uso e avisos legais
+ *            de responsabilidade) e Sobre (detalhes sobre versão, licença MIT, tecnologias de apoio
+ *            e autoria do projeto).
+ * QUEM O CHAMA: Renderizado dinamicamente a partir de `App.tsx` quando o botão de engrenagem é clicado.
+ * QUEM ELE CHAMA:
+ *   - Serviços: `SettingsService` do arquivo `services/settings.ts`.
+ * O QUE ESPERA RECEBER:
+ *   - `onClose`: Callback disparado ao fechar o painel modal.
+ *   - `initialView`: Define qual aba de conteúdo deve abrir ativa por padrão ('settings' | 'about' | 'help').
+ * O QUE ENVIA (RETORNA):
+ *   - Código JSX contendo abas de navegação de cabeçalho, caixas de diálogo, alternadores de estado e botões.
+ *
+ * Copyright (C) 2025 Zander Cattapreta
+ * Licensed under the MIT License
+ */
+
 import { useState, useEffect } from 'react';
 import { SettingsService, Theme } from '../services/settings';
 import appIcon from '../assets/app-icon.png';
@@ -10,24 +30,29 @@ interface SettingsModalProps {
 type ModalView = 'settings' | 'about' | 'help';
 
 export function SettingsModal({ onClose, initialView = 'settings' }: SettingsModalProps) {
+  // Estados locais para controlar o tema selecionado, autostart e a aba ativa do modal
   const [theme, setTheme] = useState<Theme>(SettingsService.getTheme());
   const [autostart, setAutostart] = useState(false);
   const [view, setView] = useState<ModalView>(initialView);
 
+  // Carrega na inicialização se o autostart está ativo
   useEffect(() => {
     SettingsService.isAutostartEnabled().then(setAutostart);
   }, []);
 
+  /// Altera o tema visual do aplicativo e persiste no localStorage
   const handleThemeChange = (newTheme: Theme) => {
     setTheme(newTheme);
     SettingsService.setTheme(newTheme);
   };
 
+  /// Altera as configurações de inicialização automática do app
   const handleAutostartChange = async (enabled: boolean) => {
     setAutostart(enabled);
     await SettingsService.setAutostart(enabled);
   };
 
+  // Helper para renderizar um item de navegação de aba superior
   const navItem = (target: ModalView, label: string) => (
     <button 
       onClick={() => setView(target)}
@@ -44,6 +69,8 @@ export function SettingsModal({ onClose, initialView = 'settings' }: SettingsMod
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-300">
       <div className="bg-card rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden transform animate-in slide-in-from-bottom-8 duration-500 border border-border flex flex-col max-h-[90vh]">
+        
+        {/* Cabeçalho do modal contendo navegação por abas */}
         <div className="p-6 border-b border-border bg-card/50">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-black text-foreground uppercase tracking-wider">
@@ -60,10 +87,13 @@ export function SettingsModal({ onClose, initialView = 'settings' }: SettingsMod
           </div>
         </div>
         
+        {/* Conteúdo de acordo com a aba selecionada */}
         <div className="flex-1 overflow-y-auto p-6 scrollbar-hide">
+          
+          {/* ABA: Preferências (Tema e Autostart) */}
           {view === 'settings' && (
             <div className="space-y-8 animate-in slide-in-from-left-4 duration-300">
-              {/* Theme Selection */}
+              {/* Seleção do tema visual */}
               <div className="space-y-4">
                 <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Tema Visual</h3>
                 <div className="grid grid-cols-3 gap-2">
@@ -83,7 +113,7 @@ export function SettingsModal({ onClose, initialView = 'settings' }: SettingsMod
                 </div>
               </div>
 
-              {/* Autostart */}
+              {/* Toggle de inicialização com o sistema */}
               <div className="flex items-center justify-between p-4 bg-muted rounded-2xl border border-border/50">
                 <div className="space-y-1">
                   <h3 className="text-xs font-bold text-foreground uppercase tracking-wider">Inicializar com sistema</h3>
@@ -99,6 +129,7 @@ export function SettingsModal({ onClose, initialView = 'settings' }: SettingsMod
             </div>
           )}
 
+          {/* ABA: Ajuda (Instruções e Isenções) */}
           {view === 'help' && (
             <div className="space-y-6 animate-in fade-in duration-300">
               <div className="p-4 bg-yellow-100/50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-900/50 rounded-2xl">
@@ -133,6 +164,7 @@ export function SettingsModal({ onClose, initialView = 'settings' }: SettingsMod
             </div>
           )}
 
+          {/* ABA: Sobre o Projeto */}
           {view === 'about' && (
             <div className="space-y-6 animate-in slide-in-from-right-4 duration-300 text-center">
               <div className="flex flex-col items-center gap-4 mb-2">
@@ -170,6 +202,7 @@ export function SettingsModal({ onClose, initialView = 'settings' }: SettingsMod
           )}
         </div>
 
+        {/* Rodapé institucional */}
         <div className="p-6 bg-muted/30 text-center border-t border-border">
           <p className="text-[10px] text-muted-foreground">2025 • Todos os direitos reservados</p>
         </div>

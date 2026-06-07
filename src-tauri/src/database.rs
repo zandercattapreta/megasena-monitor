@@ -1,40 +1,42 @@
 /*
- * MegaSena Monitor - Minimalist desktop application for managing bets.
+ * PROGRAMA: database.rs
+ * DESCRIÇÃO: Este módulo gerencia as operações persistentes locais da aplicação utilizando rusqlite (SQLite).
+ *            Ele inicializa o arquivo de banco de dados, cria as tabelas necessárias (`apostas`, `resultados`
+ *            e `apostas_resultados` para relações muitos-para-muitos), executa migrações estruturais básicas,
+ *            salva e exclui apostas feitas pelo usuário, além de gerenciar os caches de resultados de sorteios
+ *            e recalcular automaticamente o total de acertos das apostas em cada concurso correspondente.
+ * QUEM O CHAMA: Chamado por `lib.rs` (durante a inicialização e no monitor de background) e por
+ *               `commands.rs` (para responder aos comandos da interface do usuário).
+ * QUEM ELE CHAMA: Chama a biblioteca `rusqlite` para queries SQL e `serde_json` para codificar/decodificar vetores numéricos.
+ * O QUE ESPERA RECEBER:
+ *   - Varia conforme o método chamado (caminhos de arquivo, vetores de números, IDs e structs de dados).
+ * O QUE ENVIA:
+ *   - Retorna structs do modelo (`Aposta`, `Resultado`), vetores ordenados ou hashes mapeados de acertos.
+ *
  * Copyright (C) 2025 Zander Cattapreta
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ * Licensed under the GNU General Public License v3
  */
-
-// Database operations for MegaSena App
 
 use crate::models::Aposta;
 use rusqlite::{params, Connection, Result};
 use serde_json;
 use std::path::PathBuf;
 
+/// Struct de encapsulamento para a conexão ativa do SQLite.
 pub struct Database {
     conn: Connection,
 }
 
 impl Database {
+    /// Cria uma nova instância de Database a partir do caminho físico do arquivo SQLite.
     pub fn new(db_path: PathBuf) -> Result<Self> {
         let conn = Connection::open(db_path)?;
-        // Garantir que chaves estrangeiras estejam ativas
+        // Habilita chaves estrangeiras no banco de dados
         let _ = conn.execute("PRAGMA foreign_keys = ON;", []);
         Ok(Database { conn })
     }
 
+    /// Executa as DDLs iniciais para criar as tabelas se elas não existirem e rodar migrações básicas.
     pub fn init(&self) -> Result<()> {
         self.conn.execute_batch(
             "CREATE TABLE IF NOT EXISTS apostas (
@@ -68,7 +70,7 @@ impl Database {
             );",
         )?;
 
-        // Migrações manuais para colunas novas se a tabela já existir (ignora erro se já existirem)
+        // Migrações manuais para colunas novas adicionadas na versão recente
         let _ = self
             .conn
             .execute("ALTER TABLE resultados ADD COLUMN valor_premio REAL", []);
@@ -82,12 +84,14 @@ impl Database {
         Ok(())
     }
 
+    /// Adiciona uma nova aposta de Mega-Sena localmente na tabela.
     pub fn adicionar_aposta(
         &self,
         numeros: Vec<i32>,
         concurso_inicial: i32,
         quantidade_concursos: i32,
     ) -> Result<Aposta> {
+        // Codifica o vetor de números para string em formato JSON
         let numeros_json = serde_json::to_string(&numeros).unwrap();
 
         self.conn.execute(
@@ -97,6 +101,7 @@ impl Database {
 
         let id = self.conn.last_insert_rowid();
 
+        // Consulta a aposta recém-inserida para retorno formatado
         let mut stmt = self.conn.prepare(
             "SELECT id, numeros, concurso_inicial, quantidade_concursos,
              datetime(data_criacao) as data_criacao, ativa
@@ -113,10 +118,10 @@ impl Database {
                     .collect()
             });
 
-            // Buscar resultados/acertos
+            // Recupera acertos parciais já computados no histórico
             let acertos = self.obter_acertos_aposta(id).unwrap_or_default();
 
-            // Buscar os números sorteados de cada concurso verificado
+            // Resgata o histórico de dezenas sorteadas de cada concurso verificado
             let mut resultados_concursos = std::collections::HashMap::new();
             for (&concurso, _) in &acertos {
                 if let Ok(Some(res)) = self.obter_resultado(concurso) {
@@ -137,10 +142,10 @@ impl Database {
         })?;
 
         println!("Aposta adicionada com ID: {}", aposta.id);
-
         Ok(aposta)
     }
 
+    /// Lista todas as apostas ativas cadastradas.
     pub fn listar_apostas(&self) -> Result<Vec<Aposta>> {
         let mut stmt = self.conn.prepare(
             "SELECT id, numeros, concurso_inicial, quantidade_concursos,
@@ -161,10 +166,10 @@ impl Database {
                         .collect()
                 });
 
-                // Buscar resultados/acertos
+                // Recupera acertos computados
                 let acertos = self.obter_acertos_aposta(id).unwrap_or_default();
 
-                // Buscar os números sorteados de cada concurso verificado
+                // Associa os números sorteados de cada concurso verificado
                 let mut resultados_concursos = std::collections::HashMap::new();
                 for (&concurso, _) in &acertos {
                     if let Ok(Some(res)) = self.obter_resultado(concurso) {
@@ -187,8 +192,9 @@ impl Database {
 
         Ok(apostas)
     }
+
+    /// Exclui uma aposta e limpa todas as suas referências associadas na tabela muitos-para-muitos.
     pub fn excluir_aposta(&self, id: i64) -> Result<()> {
-        // Limpar acertos e aposta
         self.conn.execute(
             "DELETE FROM apostas_resultados WHERE aposta_id = ?1",
             params![id],
@@ -198,6 +204,7 @@ impl Database {
         Ok(())
     }
 
+    /// Salva um resultado obtido externamente na tabela resultados (como cache local offline).
     pub fn salvar_resultado(&self, resultado: &crate::models::Resultado) -> Result<()> {
         let numeros_json = serde_json::to_string(&resultado.numeros_sorteados)
             .map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(e)))?;
@@ -219,6 +226,7 @@ impl Database {
         Ok(())
     }
 
+    /// Retorna o resultado de um concurso do cache local, se houver.
     pub fn obter_resultado(&self, concurso: i32) -> Result<Option<crate::models::Resultado>> {
         let mut stmt = self.conn.prepare(
             "SELECT concurso, numeros_sorteados, data_sorteio, acumulado, valor_premio, ganhadores, valor_total
@@ -254,12 +262,13 @@ impl Database {
         }
     }
 
+    /// Processa e recalcula a pontuação (acertos) de todas as apostas ativas cobertas por um concurso sorteado.
     pub fn processar_acertos_concurso(
         &self,
         concurso: i32,
         numeros_sorteados: &[i32],
     ) -> Result<()> {
-        // Buscar todas as apostas ativas que incluem este concurso
+        // Localiza as apostas cujos limites de concurso englobam o sorteio atual
         let mut stmt = self.conn.prepare(
             "SELECT id, numeros, concurso_inicial, quantidade_concursos
              FROM apostas
@@ -282,14 +291,13 @@ impl Database {
             })?
             .collect::<Result<Vec<(i64, Vec<i32>)>>>()?;
 
+        // Calcula os acertos individuais de cada jogo e salva na tabela muitos-para-muitos
         for (id, numeros) in apostas_afetadas {
-            // Calcular acertos
             let acertos = numeros
                 .iter()
                 .filter(|n| numeros_sorteados.contains(n))
                 .count() as i32;
 
-            // Inserir ou substituir na tabela de resultados de apostas
             self.conn.execute(
                 "INSERT OR REPLACE INTO apostas_resultados (aposta_id, concurso, acertos)
                  VALUES (?1, ?2, ?3)",
@@ -300,6 +308,7 @@ impl Database {
         Ok(())
     }
 
+    /// Retorna um mapeamento de `Concurso -> Acertos` para uma aposta específica.
     pub fn obter_acertos_aposta(
         &self,
         aposta_id: i64,
@@ -347,9 +356,9 @@ mod tests {
     fn test_db_processar_acertos() {
         let db = setup_test_db();
         let aposta_numeros = vec![1, 2, 3, 4, 5, 6];
-        db.adicionar_aposta(aposta_numeros, 2650, 2).unwrap(); // Concursos 2650 e 2651
+        db.adicionar_aposta(aposta_numeros, 2650, 2).unwrap();
 
-        let sorteio_2650 = vec![1, 2, 10, 11, 12, 13]; // 2 acertos
+        let sorteio_2650 = vec![1, 2, 10, 11, 12, 13];
         let res_2650 = crate::models::Resultado {
             concurso: 2650,
             numeros_sorteados: sorteio_2650.clone(),

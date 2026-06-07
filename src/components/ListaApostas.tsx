@@ -1,3 +1,23 @@
+/*
+ * PROGRAMA: ListaApostas.tsx
+ * DESCRIÇÃO: Este componente gerencia a visualização em lista de todas as apostas salvas.
+ *            Inclui botões de filtro (todas, ativas, vencidas, premiadas) e compila estatísticas
+ *            consolidadas do usuário, calculando o investimento total (com base na quantidade de dezenas
+ *            e repetições da teimosinha), as premiações obtidas (quadras, quinas, senas) e identifica
+ *            as dezenas mais quentes (frequentes) utilizadas nos jogos cadastrados.
+ * QUEM O CHAMA: Renderizado dentro do painel principal da aplicação in `App.tsx`.
+ * QUEM ELE CHAMA:
+ *   - Componentes: `CardAposta.tsx` (para renderizar individualmente cada aposta da lista).
+ * O QUE ESPERA RECEBER:
+ *   - `apostas`: Vetor completo contendo os bilhetes registrados na aplicação (Aposta[]).
+ *   - `onApostaExcluida`: Callback para notificar a exclusão de algum bilhete e disparar recarregamento.
+ * O QUE ENVIA (RETORNA):
+ *   - Retorna a listagem visual filtrada e painéis de relatórios estruturados em JSX.
+ *
+ * Copyright (C) 2025 Zander Cattapreta
+ * Licensed under the GNU General Public License v3
+ */
+
 import { useState, useMemo } from "react";
 import { Aposta } from "../types";
 import { CardAposta } from "./CardAposta";
@@ -9,6 +29,7 @@ interface ListaApostasProps {
 
 type FiltroApostas = "todas" | "ativas" | "vencidas" | "premiadas";
 
+/// Calcula o custo oficial da Caixa em reais baseado no número de dezenas selecionadas em uma aposta.
 const calcularPreco = (qtdNumeros: number): number => {
   const precos: Record<number, number> = {
     6: 5.0,
@@ -31,8 +52,10 @@ const calcularPreco = (qtdNumeros: number): number => {
 };
 
 export function ListaApostas({ apostas, onApostaExcluida }: ListaApostasProps) {
+  // Estado local para definir qual filtro visual está ativo
   const [filtro, setFiltro] = useState<FiltroApostas>("todas");
 
+  // Estatísticas consolidadas calculadas em tempo de renderização utilizando useMemo para performance
   const analytics = useMemo(() => {
     let totalGasto = 0;
     let quadras = 0;
@@ -41,13 +64,16 @@ export function ListaApostas({ apostas, onApostaExcluida }: ListaApostasProps) {
     const frequencia: Record<number, number> = {};
 
     apostas.forEach((aposta) => {
+      // Investimento total ponderado pela quantidade de concursos da teimosinha
       totalGasto +=
         calcularPreco(aposta.numeros.length) * aposta.quantidadeConcursos;
 
+      // Conta a frequência com que cada número foi jogado
       aposta.numeros.forEach((n) => {
         frequencia[n] = (frequencia[n] || 0) + 1;
       });
 
+      // Conta a ocorrência de acertos premiados
       if (aposta.acertos) {
         Object.values(aposta.acertos).forEach((acertos) => {
           if (acertos === 4) quadras++;
@@ -57,6 +83,7 @@ export function ListaApostas({ apostas, onApostaExcluida }: ListaApostasProps) {
       }
     });
 
+    // Identifica as 5 dezenas mais jogadas pelo usuário
     const numerosQuentes = Object.entries(frequencia)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5)
@@ -65,11 +92,13 @@ export function ListaApostas({ apostas, onApostaExcluida }: ListaApostasProps) {
     return { totalGasto, quadras, quinas, senas, numerosQuentes };
   }, [apostas]);
 
+  // Lista filtrada de apostas de acordo com a seleção atual
   const filtradas = useMemo(() => {
     return apostas.filter((aposta) => {
       const resultadosRecebidos = Object.keys(
         aposta.resultadosConcursos || {},
       ).length;
+      
       const isAtiva = resultadosRecebidos < aposta.quantidadeConcursos;
       const isVencida = resultadosRecebidos >= aposta.quantidadeConcursos;
 
@@ -88,6 +117,7 @@ export function ListaApostas({ apostas, onApostaExcluida }: ListaApostasProps) {
     });
   }, [apostas, filtro]);
 
+  // View exibida se não existirem apostas registradas no monitor
   if (apostas.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-gray-400">
@@ -100,7 +130,8 @@ export function ListaApostas({ apostas, onApostaExcluida }: ListaApostasProps) {
 
   return (
     <div className="space-y-6">
-      {/* Filtros (Topo) */}
+      
+      {/* Barra de Filtros horizontais */}
       <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
         <button
           onClick={() => setFiltro("todas")}
@@ -144,7 +175,7 @@ export function ListaApostas({ apostas, onApostaExcluida }: ListaApostasProps) {
         </button>
       </div>
 
-      {/* Lista de Apostas Feitas */}
+      {/* Exibição da listagem de apostas filtradas */}
       <div className="space-y-3">
         {filtradas.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground text-sm border border-dashed border-border rounded-3xl font-medium">
@@ -163,12 +194,14 @@ export function ListaApostas({ apostas, onApostaExcluida }: ListaApostasProps) {
 
       <div className="border-t border-border pt-6 mt-6"></div>
 
-      {/* Painel de Rendimento e Estatísticas (Abaixo das Apostas) */}
+      {/* Painel inferior de estatísticas e dezenas quentes */}
       <div className="space-y-4">
         <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] ml-1">
           Estatísticas & Rendimento de Jogos
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          
+          {/* Contador de premiações registradas (Quadras, Quinas, Senas) */}
           <div className="bg-card border border-border rounded-2xl p-4 flex flex-col justify-center shadow-sm h-[84px]">
             <span className="text-[10px] font-black text-muted-foreground uppercase tracking-wider">
               Premiações
@@ -201,6 +234,7 @@ export function ListaApostas({ apostas, onApostaExcluida }: ListaApostasProps) {
             </div>
           </div>
 
+          {/* Exibição das 5 dezenas mais usadas nos bilhetes (dezenas quentes) */}
           <div className="bg-card border border-border rounded-2xl p-4 flex flex-col justify-center shadow-sm h-[84px]">
             <span className="text-[10px] font-black text-muted-foreground uppercase tracking-wider mb-2">
               Dezenas Quentes (Top 5)
@@ -221,6 +255,7 @@ export function ListaApostas({ apostas, onApostaExcluida }: ListaApostasProps) {
               )}
             </div>
           </div>
+
         </div>
       </div>
     </div>
