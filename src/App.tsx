@@ -249,9 +249,9 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground transition-colors duration-500">
+    <div className="min-h-screen bg-background text-foreground transition-colors duration-500 pb-[env(safe-area-inset-bottom,0px)]">
       {/* Barra superior de cabeçalho */}
-      <header className="p-6 pb-2 sticky top-0 bg-background/80 backdrop-blur-md z-10 border-b border-border">
+      <header className="px-6 pb-2 pt-[calc(1.5rem+env(safe-area-inset-top,0px))] sticky top-0 bg-background/80 backdrop-blur-md z-10 border-b border-border">
         <div className="container mx-auto max-w-lg flex justify-between items-center h-12">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-green-sphere rounded-2xl flex items-center justify-center shadow-lg transform -rotate-3 hover:rotate-0 transition-all cursor-default overflow-hidden">

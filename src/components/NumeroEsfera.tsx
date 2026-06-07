@@ -38,7 +38,7 @@ export function NumeroEsfera({
   // Mapeamento de classes CSS correspondentes ao tamanho solicitado da esfera
   const sizeClasses = {
     small: 'w-7 h-7 text-[10px]',
-    medium: 'w-10 h-10 text-lg',
+    medium: 'w-8 h-8 sm:w-10 sm:h-10 text-xs sm:text-lg',
     large: 'w-12 h-12 text-xl'
   };
 

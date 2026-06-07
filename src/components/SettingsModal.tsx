@@ -30,6 +30,7 @@ interface SettingsModalProps {
 type ModalView = 'settings' | 'about' | 'help';
 
 export function SettingsModal({ onClose, initialView = 'settings' }: SettingsModalProps) {
+  const isMobile = typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   // Estados locais para controlar o tema selecionado, autostart e a aba ativa do modal
   const [theme, setTheme] = useState<Theme>(SettingsService.getTheme());
   const [autostart, setAutostart] = useState(false);
@@ -113,19 +114,21 @@ export function SettingsModal({ onClose, initialView = 'settings' }: SettingsMod
                 </div>
               </div>
 
-              {/* Toggle de inicialização com o sistema */}
-              <div className="flex items-center justify-between p-4 bg-muted rounded-2xl border border-border/50">
-                <div className="space-y-1">
-                  <h3 className="text-xs font-bold text-foreground uppercase tracking-wider">Inicializar com sistema</h3>
-                  <p className="text-[10px] text-muted-foreground leading-tight">Abrir o app automaticamente ao ligar o computador</p>
+              {/* Toggle de inicialização com o sistema - Ocultado em Mobile */}
+              {!isMobile && (
+                <div className="flex items-center justify-between p-4 bg-muted rounded-2xl border border-border/50">
+                  <div className="space-y-1">
+                    <h3 className="text-xs font-bold text-foreground uppercase tracking-wider">Inicializar com sistema</h3>
+                    <p className="text-[10px] text-muted-foreground leading-tight">Abrir o app automaticamente ao ligar o computador</p>
+                  </div>
+                  <button 
+                    onClick={() => handleAutostartChange(!autostart)}
+                    className={`w-12 h-6 rounded-full transition-all relative flex-shrink-0 ${autostart ? 'bg-green-sphere' : 'bg-accent'}`}
+                  >
+                    <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all ${autostart ? 'translate-x-6' : ''}`} />
+                  </button>
                 </div>
-                <button 
-                  onClick={() => handleAutostartChange(!autostart)}
-                  className={`w-12 h-6 rounded-full transition-all relative flex-shrink-0 ${autostart ? 'bg-green-sphere' : 'bg-accent'}`}
-                >
-                  <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-all ${autostart ? 'translate-x-6' : ''}`} />
-                </button>
-              </div>
+              )}
             </div>
           )}
 

@@ -50,10 +50,10 @@ export function CardAposta({ aposta, onExcluida }: CardApostaProps) {
     }
   };
 
-  // String formatada descrevendo a vigência de concursos
+  // String formatada descrevendo a vigência de concursos (Concurso inicial antes da quantidade)
   const concursosRestantes = aposta.quantidadeConcursos > 1
-    ? `${aposta.quantidadeConcursos} concursos`
-    : `Concurso ${aposta.concursoInicial}`;
+    ? `C# ${aposta.concursoInicial} • ${aposta.quantidadeConcursos} concursos`
+    : `C# ${aposta.concursoInicial} (Único)`;
 
   return (
     <div className={`glass-card rounded-3xl overflow-hidden shadow-sm transition-all duration-300 hover:shadow-md border border-border bg-card ${expandido ? 'ring-2 ring-green-sphere/20' : ''}`}>
