@@ -24,7 +24,7 @@ interface GridNumerosProps {
   maxSelecao?: number;
 }
 
-export function GridNumeros({ selecionados, onChange, maxSelecao = 15 }: GridNumerosProps) {
+export function GridNumeros({ selecionados, onChange, maxSelecao = 20 }: GridNumerosProps) {
   const numeros = Array.from({ length: 60 }, (_, i) => i + 1);
 
   const toggleNumero = (num: number) => {

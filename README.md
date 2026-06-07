@@ -78,7 +78,7 @@ O banco de dados local utiliza três tabelas principais:
 ```bash
 # Clone o repositório
 git clone https://github.com/zandercpzed/megasena-monitor.git
-cd megasena-monitor/megasena-app
+cd megasena-monitor
 
 # Instale as dependências
 npm install
@@ -116,3 +116,4 @@ Contribuições são muito bem-vindas! Se você tem uma ideia de recurso, corre�
 ---
 
 _Desenvolvido com 🍀 por [Zander Catta Preta](https://github.com/zandercpzed)_
+Preta](https://github.com/zandercpzed)_

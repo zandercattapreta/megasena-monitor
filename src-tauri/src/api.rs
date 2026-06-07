@@ -48,21 +48,16 @@ struct CaixaApiResponse {
     valor_acumulado_proximo: Option<f64>,
 }
 
-/// Busca resultado da API oficial da Caixa
-fn fetch_caixa_api(concurso: i32) -> Result<Resultado, String> {
-    let url = format!(
-        "https://servicebus2.caixa.gov.br/portaldeloterias/api/megasena/{}",
-        concurso
-    );
-
+/// Auxiliar robusto para buscar e parsear os dados da API (Caixa ou Guidi)
+fn fetch_and_parse_api(url: &str, user_agent: &str) -> Result<Resultado, String> {
     let client = Client::builder()
         .timeout(std::time::Duration::from_secs(10))
-        .user_agent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36")
+        .user_agent(user_agent)
         .build()
         .map_err(|e| format!("Erro ao criar cliente HTTP: {}", e))?;
 
     let response = client
-        .get(&url)
+        .get(url)
         .send()
         .map_err(|e| format!("Erro ao fazer requisição: {}", e))?;
 
@@ -116,6 +111,16 @@ fn fetch_caixa_api(concurso: i32) -> Result<Resultado, String> {
     })
 }
 
+/// Busca resultado da API oficial da Caixa
+fn fetch_caixa_api(concurso: i32) -> Result<Resultado, String> {
+    let url = format!(
+        "https://servicebus2.caixa.gov.br/portaldeloterias/api/megasena/{}",
+        concurso
+    );
+    let user_agent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36";
+    fetch_and_parse_api(&url, user_agent)
+}
+
 /// Busca resultado de APIs alternativas (fallback)
 fn fetch_external_fallback(concurso: i32) -> Result<Resultado, String> {
     // Fonte 1: API Guidi (Open Source)
@@ -125,53 +130,8 @@ fn fetch_external_fallback(concurso: i32) -> Result<Resultado, String> {
     );
 
     println!("Tentando fallback Fonte 1 (Guidi): {}", url);
-
-    let client = Client::builder()
-        .timeout(std::time::Duration::from_secs(10))
-        .user_agent("MegaSena Monitor/1.0.0")
-        .build()
-        .map_err(|e| format!("Erro ao criar cliente HTTP Fallback: {}", e))?;
-
-    match client.get(&url).send() {
-        Ok(response) => {
-            let status = response.status();
-            if status.is_success() {
-                if let Ok(data) = response.json::<CaixaApiResponse>() {
-                    // Reutilizar o parsing da Caixa já que o formato é idêntico
-                     let numeros_sorteados: Vec<i32> = data
-                        .dezenas
-                        .iter()
-                        .filter_map(|s| s.parse::<i32>().ok())
-                        .collect();
-
-                    if numeros_sorteados.len() == 6 {
-                        let sena_info = data.lista_rateio.iter().find(|r| r.descricao.to_lowercase().contains("6"));
-                        let ganhadores = sena_info.map(|s| s.ganhadores);
-                        let valor_premio = sena_info.and_then(|s| s.valor);
-
-                        let valor_total = if let (Some(g), Some(v)) = (ganhadores, valor_premio) {
-                            if g > 0 { Some(g as f64 * v) }
-                            else { data.valor_acumulado_proximo.or(data.valor_estimado_proximo) }
-                        } else {
-                            data.valor_estimado_proximo
-                        };
-
-                        return Ok(Resultado {
-                            concurso: data.numero,
-                            numeros_sorteados,
-                            data_sorteio: data.data_apuracao,
-                            acumulado: data.acumulado,
-                            valor_premio,
-                            ganhadores,
-                            valor_total,
-                        });
-                    }
-                }
-            }
-            Err(format!("Fallback Fonte 1 retornou status: {}", status))
-        }
-        Err(e) => Err(format!("Erro na requisição de fallback: {}", e))
-    }
+    let user_agent = "MegaSena Monitor/1.0.0";
+    fetch_and_parse_api(&url, user_agent)
 }
 
 /// Busca o número do último concurso realizado com fallback

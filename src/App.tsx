@@ -19,19 +19,7 @@ import * as tauri from "./services/tauri";
 import { Aposta, Resultado } from "./types";
 import "./App.css";
 
-import { listen as tauriListen } from "@tauri-apps/api/event";
-import { useEffect as tauriUseEffect } from "react";
-
 function App() {
-  tauriUseEffect(() => {
-    const unlisten = tauriListen("novo-resultado", () => {
-      // Recarrega a view para refletir os resultados processados em background
-      window.location.reload();
-    });
-    return () => {
-      unlisten.then((f) => f());
-    };
-  }, []);
   const [apostas, setApostas] = useState<Aposta[]>([]);
   const [ultimosResultados, setUltimosResultados] = useState<Resultado[]>([]);
   const [lastResultado, setLastResultado] = useState<Resultado | null>(null);
@@ -179,11 +167,16 @@ function App() {
       setSettingsView(event.payload as any);
       setShowSettings(true);
     });
+    const unlistenNovo = listen("novo-resultado", () => {
+      // Recarrega a view para refletir os resultados processados em background
+      window.location.reload();
+    });
 
     return () => {
       clearInterval(interval);
       unlistenShow.then((f) => f());
       unlistenView.then((f) => f());
+      unlistenNovo.then((f) => f());
     };
   }, []);
 

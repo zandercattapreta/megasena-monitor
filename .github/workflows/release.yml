@@ -25,7 +25,7 @@ jobs:
         with:
           node-version: lts/*
           cache: 'npm'
-          cache-dependency-path: megasena-app/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -33,7 +33,7 @@ jobs:
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: megasena-app/src-tauri -> target
+          workspaces: src-tauri -> target
 
       - name: Install dependencies (ubuntu only)
         if: matrix.platform == 'ubuntu-22.04'
@@ -43,7 +43,6 @@ jobs:
 
       - name: Frontend install
         run: npm install
-        working-directory: megasena-app
 
       - name: Build and Release
         uses: tauri-apps/tauri-action@v0
@@ -55,4 +54,4 @@ jobs:
           releaseBody: "Confira as novidades da versão __VERSION__!"
           releaseDraft: true
           prerelease: false
-          projectPath: megasena-app
+          projectPath: .

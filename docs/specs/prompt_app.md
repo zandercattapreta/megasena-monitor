@@ -432,7 +432,7 @@ async fn verificar_resultados(concurso: i32) -> Result<Resultado, String> {
 ## Estrutura do Projeto
 
 ```
-megasena-app/
+/ (Raiz do Projeto)
 ├── src-tauri/              # Backend Rust
 │   ├── src/
 │   │   ├── main.rs         # Entry point
@@ -458,6 +458,7 @@ megasena-app/
 │   ├── App.tsx
 │   ├── main.tsx
 │   └── index.css           # Tailwind
+├── docs/                   # Documentação e design
 ├── package.json
 ├── tsconfig.json
 ├── tailwind.config.js

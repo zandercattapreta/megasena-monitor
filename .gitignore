@@ -36,3 +36,9 @@ _BKP*
 _ bkp*
 _ BKP*
 
+# Compiled Binaries (Tauri Output)
+*.dmg
+*.app
+dist/
+dist-ssr/
+
