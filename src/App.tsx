@@ -307,6 +307,7 @@ function App() {
       {lastResultado && (
         <ModalResultado
           resultado={lastResultado}
+          apostas={apostas}
           onClose={() => setLastResultado(null)}
         />
       )}
