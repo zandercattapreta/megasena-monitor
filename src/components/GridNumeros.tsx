@@ -17,6 +17,7 @@
  * Licensed under the GNU General Public License v3
  */
 
+import { useCallback, useRef, useEffect } from 'react';
 import { NumeroEsfera } from './NumeroEsfera';
 
 interface GridNumerosProps {
@@ -29,16 +30,23 @@ export function GridNumeros({ selecionados, onChange, maxSelecao = 20 }: GridNum
   // Inicializa um vetor estático contendo dezenas de 1 a 60
   const numeros = Array.from({ length: 60 }, (_, i) => i + 1);
 
+  // Mantém a referência mais recente de selecionados para o callback
+  const selecionadosRef = useRef(selecionados);
+  useEffect(() => {
+    selecionadosRef.current = selecionados;
+  }, [selecionados]);
+
   /// Trata a ativação ou desativação de uma dezena da grade
-  const toggleNumero = (num: number) => {
-    if (selecionados.includes(num)) {
+  const toggleNumero = useCallback((num: number) => {
+    const atuais = selecionadosRef.current;
+    if (atuais.includes(num)) {
       // Se já estiver selecionado, remove do vetor
-      onChange(selecionados.filter(n => n !== num));
-    } else if (selecionados.length < maxSelecao) {
+      onChange(atuais.filter(n => n !== num));
+    } else if (atuais.length < maxSelecao) {
       // Se estiver abaixo do limite máximo de dezenas, adiciona e ordena o vetor de forma crescente
-      onChange([...selecionados, num].sort((a, b) => a - b));
+      onChange([...atuais, num].sort((a, b) => a - b));
     }
-  };
+  }, [onChange, maxSelecao]);
 
   return (
     <div className="grid grid-cols-10 gap-2 p-4 bg-muted/20 rounded-2xl border border-border/50">
@@ -47,7 +55,7 @@ export function GridNumeros({ selecionados, onChange, maxSelecao = 20 }: GridNum
           key={num}
           numero={num}
           selecionado={selecionados.includes(num)}
-          onClick={() => toggleNumero(num)}
+          onClick={toggleNumero}
         />
       ))}
     </div>

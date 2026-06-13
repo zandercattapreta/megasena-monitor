@@ -67,7 +67,10 @@ impl Database {
                 PRIMARY KEY (aposta_id, concurso),
                 FOREIGN KEY (aposta_id) REFERENCES apostas(id) ON DELETE CASCADE,
                 FOREIGN KEY (concurso) REFERENCES resultados(concurso) ON DELETE CASCADE
-            );",
+            );
+            
+            CREATE INDEX IF NOT EXISTS idx_resultados_concurso ON resultados(concurso);
+            CREATE INDEX IF NOT EXISTS idx_apostas_ativa ON apostas(ativa);",
         )?;
 
         // Migrações manuais para colunas novas adicionadas na versão recente
@@ -291,6 +294,8 @@ impl Database {
             })?
             .collect::<Result<Vec<(i64, Vec<i32>)>>>()?;
 
+        self.conn.execute("BEGIN TRANSACTION", [])?;
+
         // Calcula os acertos individuais de cada jogo e salva na tabela muitos-para-muitos
         for (id, numeros) in apostas_afetadas {
             let acertos = numeros
@@ -304,6 +309,8 @@ impl Database {
                 params![id, concurso, acertos],
             )?;
         }
+
+        self.conn.execute("COMMIT", [])?;
 
         Ok(())
     }

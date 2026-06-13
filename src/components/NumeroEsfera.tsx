@@ -19,15 +19,17 @@
  * Licensed under the GNU General Public License v3
  */
 
+import { memo, useCallback } from 'react';
+
 interface NumeroEsferaProps {
   numero: number;
   selecionado?: boolean;
   acertou?: boolean;
   tamanho?: 'small' | 'medium' | 'large';
-  onClick?: () => void;
+  onClick?: (numero: number) => void;
 }
 
-export function NumeroEsfera({ 
+export const NumeroEsfera = memo(function NumeroEsfera({ 
   numero, 
   selecionado = false, 
   acertou = false,
@@ -35,6 +37,12 @@ export function NumeroEsfera({
   onClick 
 }: NumeroEsferaProps) {
   
+  const handleClick = useCallback(() => {
+    if (onClick) {
+      onClick(numero);
+    }
+  }, [onClick, numero]);
+
   // Mapeamento de classes CSS correspondentes ao tamanho solicitado da esfera
   const sizeClasses = {
     small: 'w-7 h-7 text-[10px]',
@@ -44,7 +52,7 @@ export function NumeroEsfera({
 
   return (
     <div
-      onClick={onClick}
+      onClick={handleClick}
       className={`
         ${sizeClasses[tamanho]} rounded-full font-bold flex items-center justify-center
         transition-all duration-300 select-none
@@ -60,4 +68,4 @@ export function NumeroEsfera({
       {numero.toString().padStart(2, '0')}
     </div>
   );
-}
+});
